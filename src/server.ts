@@ -1,0 +1,73 @@
+import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { SERVER_INFO } from './config.js';
+import { ServerConfig } from './types/index.js';
+import { registerTools } from './capabilities/tools.js';
+import { registerResources } from './capabilities/resources.js';
+import { registerPrompts } from './capabilities/prompts.js';
+
+export class OAuthMcpServer {
+    private mcpServer: McpServer;
+    private config: ServerConfig;
+
+    constructor(config: ServerConfig) {
+        this.config = config;
+        this.mcpServer = new McpServer(
+            {
+                name: SERVER_INFO.name,
+                version: SERVER_INFO.version,
+                description: SERVER_INFO.description,
+                vendor: SERVER_INFO.vendor,
+                protocolVersion: SERVER_INFO.protocolVersion,
+            },
+            {
+                capabilities: {
+                    tools: {},
+                    resources: {},
+                    prompts: {},
+                    logging: {},
+                },
+            }
+        );
+
+        this.setupCapabilities();
+        this.setupEventHandlers();
+    }
+
+    private setupCapabilities(): void {
+        const requireAuth = this.config.transport === 'http' && this.config.enableAuth;
+
+        // Register all capabilities
+        registerTools(this.mcpServer, requireAuth);
+        registerResources(this.mcpServer, requireAuth);
+        registerPrompts(this.mcpServer, requireAuth);
+    }
+
+    private setupEventHandlers(): void {
+        this.mcpServer.server.onerror = (error: Error) => {
+            console.error('[MCP Server Error]', error);
+        };
+
+        this.mcpServer.server.onclose = () => {
+            console.log('[MCP Server] Connection closed');
+        };
+    }
+
+    getServer(): McpServer {
+        return this.mcpServer;
+    }
+
+    async initialize(): Promise<void> {
+        console.log(`[MCP Server] Initializing ${SERVER_INFO.name} v${SERVER_INFO.version}`);
+        console.log(`[MCP Server] Transport: ${this.config.transport}`);
+        console.log(`[MCP Server] Authentication: ${this.config.enableAuth ? 'enabled' : 'disabled'}`);
+
+        if (this.config.transport === 'http') {
+            console.log(`[MCP Server] HTTP Port: ${this.config.httpPort}`);
+        }
+    }
+
+    async shutdown(): Promise<void> {
+        console.log('[MCP Server] Shutting down...');
+        await this.mcpServer.close();
+    }
+} 

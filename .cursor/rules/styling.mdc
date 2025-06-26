@@ -1,0 +1,18 @@
+---
+description: UI and Styling Standards
+globs: **/*
+---
+# UI and Styling Standards
+
+## Component Libraries
+- Use Shadcn UI and Radix for components
+- Use `npx shadcn@latest add <component-name>` to add new shadcn components
+- When adding new shadcn component, document the installation command
+
+## Styling Guidelines
+- Implement Tailwind CSS for styling
+- Ensure responsive design across all device sizes
+- Follow mobile-first approach
+- Use Tailwind's built-in design system
+- Maintain consistent spacing and layout patterns
+- Follow existing UX patterns and interactions to maintain consistency across the application 

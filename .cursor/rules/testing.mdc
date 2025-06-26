@@ -1,0 +1,13 @@
+---
+description: Testing Standards
+globs: **/*
+---
+# Testing Standards
+
+## Testing Requirements
+- Write unit tests for utilities and components
+- Implement E2E tests for critical flows
+- Test memory usage and performance
+- Ensure comprehensive test coverage
+- Follow testing best practices
+- Use appropriate testing libraries and frameworks 

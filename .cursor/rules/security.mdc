@@ -1,0 +1,17 @@
+---
+description: Security Standards
+globs: **/*
+---
+# Security Standards
+
+## Security Requirements
+- Implement Content Security Policy
+- Sanitize user inputs
+- Handle sensitive data properly
+- Implement proper CORS handling
+
+## Error Handling
+- Implement proper error boundaries
+- Log errors appropriately for debugging
+- Provide user-friendly error messages
+- Handle network failures gracefully 

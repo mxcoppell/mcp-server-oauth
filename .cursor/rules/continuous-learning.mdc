@@ -1,0 +1,27 @@
+---
+description: Continuous Self-Learning Standards
+globs: **/*
+---
+# Continuous Self-Learning Standards
+
+## Data Processing
+- Capture real-time interaction data (libraries, APIs, patterns)
+- Process using NLP and normalize for consistency
+- Auto-update .cursorrules based on validated patterns
+
+## Knowledge Management
+- Maintain versioned knowledge graph of project entities
+- Track relationships between components
+- Persist validated rules to .cursorrules file
+
+## Rule System
+- Generate rules from observed patterns
+- Validate using statistical analysis
+- Rank by relevance and effectiveness
+- Apply version control to rule updates
+
+## System Updates
+- Auto-update rules with conflict resolution
+- Maintain feedback loop with metrics (precision, recall)
+- Prune outdated rules periodically
+- Notify users when restart is required 

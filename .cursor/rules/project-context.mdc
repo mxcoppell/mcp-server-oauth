@@ -1,0 +1,28 @@
+---
+description: Project Context and General Instructions
+globs: **/*
+---
+# Project Context and General Instructions
+
+Every time you choose to apply a rule(s), explicitly state the rule(s) in the output. You can abbreviate the rule description to a single word or phrase.
+
+## Project Context
+[Brief description ]
+- [more description]
+- [more description]
+- [more description]
+
+## Code Style and Structure
+- Write concise, technical TypeScript code with accurate examples
+- Use functional and declarative programming patterns; avoid classes
+- Prefer iteration and modularization over code duplication
+- Use descriptive variable names with auxiliary verbs (e.g., isLoading, hasError)
+- Manage the project directory structure professionally
+
+## Tech Stack
+- React
+- TypeScript
+- Tailwind CSS
+- Shadcn UI
+- Python
+- Do NOT use Vite 

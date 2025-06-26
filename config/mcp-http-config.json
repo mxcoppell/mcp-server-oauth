@@ -1,0 +1,23 @@
+{
+    "mcpServers": {
+        "mcp-server-oauth-http": {
+            "command": "node",
+            "args": [
+                "dist/index.js"
+            ],
+            "env": {
+                "MCP_TRANSPORT": "http",
+                "MCP_HTTP_PORT": "6060",
+                "ENABLE_AUTH": "true",
+                "OAUTH_JWT_SECRET": "demo-secret-key-for-testing",
+                "OAUTH_ISSUER": "https://signin.tradestation.com",
+                "OAUTH_AUDIENCE": "https://api.tradestation.com",
+                "CORS_ORIGIN": "*"
+            }
+        }
+    },
+    "transport": {
+        "type": "sse",
+        "url": "http://localhost:6060/sse"
+    }
+}

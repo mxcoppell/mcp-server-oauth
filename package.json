@@ -1,0 +1,59 @@
+{
+    "name": "mcp-server-oauth",
+    "version": "1.0.0",
+    "description": "Comprehensive MCP server with OAuth 2.1 authorization and dual transport support",
+    "main": "dist/index.js",
+    "type": "module",
+    "scripts": {
+        "build": "tsc",
+        "dev": "tsx watch src/index.ts",
+        "start": "node dist/index.js",
+        "start:stdio": "MCP_TRANSPORT=stdio npm start",
+        "start:http": "MCP_TRANSPORT=http npm start",
+        "dev:stdio": "MCP_TRANSPORT=stdio npm run dev",
+        "dev:http": "MCP_TRANSPORT=http npm run dev",
+        "test": "jest",
+        "test:watch": "jest --watch",
+        "lint": "eslint src/**/*.ts",
+        "lint:fix": "eslint src/**/*.ts --fix",
+        "inspector:stdio": "npx @modelcontextprotocol/inspector --config config/mcp-stdio-config.json",
+        "inspector:http": "npx @modelcontextprotocol/inspector --config config/mcp-http-config.json --server http-dev",
+        "generate-token": "node scripts/generate-test-token.js"
+    },
+    "keywords": [
+        "mcp",
+        "model-context-protocol",
+        "oauth",
+        "bearer-token",
+        "typescript",
+        "stdio",
+        "http",
+        "sse"
+    ],
+    "author": "MCP OAuth Server Example",
+    "license": "MIT",
+    "dependencies": {
+        "@modelcontextprotocol/sdk": "^1.13.1",
+        "cors": "^2.8.5",
+        "express": "^4.21.2",
+        "jsonwebtoken": "^9.0.2",
+        "zod": "^3.25.67"
+    },
+    "devDependencies": {
+        "@types/cors": "^2.8.19",
+        "@types/express": "^4.17.23",
+        "@types/jest": "^29.5.8",
+        "@types/jsonwebtoken": "^9.0.10",
+        "@types/node": "^20.9.0",
+        "@typescript-eslint/eslint-plugin": "^6.11.0",
+        "@typescript-eslint/parser": "^6.11.0",
+        "eslint": "^8.54.0",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.1.1",
+        "tsx": "^4.6.0",
+        "typescript": "^5.2.2"
+    },
+    "engines": {
+        "node": ">=18.0.0"
+    }
+}

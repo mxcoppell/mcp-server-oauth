@@ -1,0 +1,39 @@
+---
+description: Development Workflow Standards
+globs: **/*
+---
+# Development Workflow Standards
+
+## Git Usage
+Commit Message Prefixes:
+- "fix:" for bug fixes
+- "feat:" for new features
+- "perf:" for performance improvements
+- "docs:" for documentation changes
+- "style:" for formatting changes
+- "refactor:" for code refactoring
+- "test:" for adding missing tests
+- "chore:" for maintenance tasks
+
+## Git Rules
+- Use lowercase for commit messages
+- Keep the summary line concise
+- Include description for non-obvious changes
+- Reference issue numbers when applicable
+
+## Documentation
+- Maintain clear README with setup instructions
+- Document API interactions and data flows
+- Don't include comments unless it's for complex logic
+- Document permission requirements
+
+## Workflow
+- Use proper version control
+- Implement proper code review process
+- Test in multiple environments
+- Follow semantic versioning for releases
+- Maintain changelog
+
+## GitHub Actions
+- Do not commit without explicit command
+- Do not push to origin without explicit command 

@@ -1,0 +1,14 @@
+{
+    "mcpServers": {
+        "mcp-server-oauth": {
+            "command": "node",
+            "args": [
+                "dist/index.js"
+            ],
+            "env": {
+                "MCP_TRANSPORT": "stdio",
+                "ENABLE_AUTH": "false"
+            }
+        }
+    }
+}
