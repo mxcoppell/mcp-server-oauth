@@ -1,5 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { AccountInfo, MarketData, StreamData } from '../types/index.js';
+import { AccountInfo, MarketData } from '../types/index.js';
 
 const accountCache = new Map<string, { data: AccountInfo; timestamp: number }>();
 const CACHE_TTL = 30000; // 30 seconds
@@ -8,7 +8,7 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
     // Non-streamable resource: Account Information
     server.resource(
         'Account Information',
-        'account://info/example',
+        'account://info/{accountId}',
         { description: 'Get detailed account information and portfolio summary', mimeType: 'application/json' },
         async (uri, extra) => {
             if (requireAuth && !extra?.authInfo?.token) {
@@ -17,7 +17,7 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
 
             const accountId = extractAccountIdFromUri(uri.toString());
             if (!accountId) {
-                throw new Error('Invalid account URI format');
+                throw new Error('Invalid account URI format. Use account://info/{accountId}');
             }
 
             // Check cache first
@@ -54,11 +54,15 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
         }
     );
 
-    // Streamable resource: Market Data Feed
+    // Streamable resource: Market Data Stream
+    // This resource supports subscriptions through the MCP protocol's built-in subscription mechanism
     server.resource(
         'Market Data Stream',
-        'stream://market/AAPL',
-        { description: 'Real-time market data stream for a given symbol', mimeType: 'text/event-stream' },
+        'stream://market/{symbol}',
+        {
+            description: 'Real-time market data stream for a given symbol. Supports subscriptions for live updates.',
+            mimeType: 'application/json'
+        },
         async (uri, extra) => {
             if (requireAuth && !extra?.authInfo?.token) {
                 throw new Error('Unauthorized: Valid Bearer token required');
@@ -66,16 +70,28 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
 
             const symbol = extractSymbolFromUri(uri.toString());
             if (!symbol) {
-                throw new Error('Invalid stream URI format');
+                throw new Error('Invalid stream URI format. Use stream://market/{symbol}');
             }
 
-            // Return initial response for streaming
+            // Return current market data snapshot
+            const marketData = generateMockMarketData(symbol);
+
             return {
                 contents: [
                     {
                         uri: uri.toString(),
-                        mimeType: 'text/event-stream',
-                        text: createStreamingResponse(symbol)
+                        mimeType: 'application/json',
+                        text: JSON.stringify({
+                            type: 'market_data_snapshot',
+                            timestamp: Date.now(),
+                            symbol: symbol,
+                            data: marketData,
+                            subscription_info: {
+                                supports_streaming: true,
+                                update_frequency: '2s',
+                                note: 'Use resources/subscribe to get live updates'
+                            }
+                        }, null, 2)
                     }
                 ]
             };
@@ -169,7 +185,6 @@ async function fetchAccountInfo(accountId: string): Promise<AccountInfo> {
     ];
 
     const totalMarketValue = mockPositions.reduce((sum, pos) => sum + pos.marketValue, 0);
-    // const totalUnrealizedPnL = mockPositions.reduce((sum, pos) => sum + pos.unrealizedPnL, 0);
 
     return {
         accountId,
@@ -179,17 +194,6 @@ async function fetchAccountInfo(accountId: string): Promise<AccountInfo> {
         buyingPower: 50000.00,
         positions: mockPositions
     };
-}
-
-function createStreamingResponse(symbol: string): string {
-    const streamData: StreamData = {
-        type: 'market_data',
-        timestamp: Date.now(),
-        data: generateMockMarketData(symbol)
-    };
-
-    // Format as Server-Sent Events
-    return `data: ${JSON.stringify(streamData)}\n\n`;
 }
 
 function generateMockMarketData(symbol: string): MarketData {

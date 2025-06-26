@@ -22,7 +22,10 @@ export class OAuthMcpServer {
             {
                 capabilities: {
                     tools: {},
-                    resources: {},
+                    resources: {
+                        subscribe: true,
+                        listChanged: true
+                    },
                     prompts: {},
                     logging: {},
                 },
