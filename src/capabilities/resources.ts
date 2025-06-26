@@ -1,7 +1,9 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import { AccountInfo, MarketData } from '../types/index.js';
 
 const accountCache = new Map<string, { data: AccountInfo; timestamp: number }>();
+const subscriptions = new Map<string, NodeJS.Timeout>(); // Track active subscriptions
 const CACHE_TTL = 30000; // 30 seconds
 
 export function registerResources(server: McpServer, requireAuth: boolean = true): void {
@@ -103,4 +105,123 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
             };
         }
     );
+
+    // Setup resource subscription handlers
+    setupResourceSubscriptionHandlers(server, requireAuth);
+}
+
+function setupResourceSubscriptionHandlers(server: McpServer, _requireAuth: boolean): void {
+    // Handle resource subscription requests
+    server.server.setRequestHandler(
+        z.object({
+            method: z.literal('resources/subscribe'),
+            params: z.object({
+                uri: z.string()
+            })
+        }),
+        async (request, _extra) => {
+            const { uri } = request.params;
+            console.error(`[Resources] Subscription requested for: ${uri}`);
+
+            if (!uri.startsWith('stream://')) {
+                throw new Error('Only streaming resources support subscriptions');
+            }
+
+            // Stop existing subscription if any
+            if (subscriptions.has(uri)) {
+                clearInterval(subscriptions.get(uri)!);
+                subscriptions.delete(uri);
+            }
+
+            // Start periodic updates every 2 seconds
+            const interval = setInterval(async () => {
+                try {
+                    await sendResourceUpdate(server, uri);
+                } catch (error) {
+                    console.error(`[Resources] Error sending resource update for ${uri}:`, error);
+                }
+            }, 2000);
+
+            subscriptions.set(uri, interval);
+            console.error(`[Resources] Started streaming for: ${uri}`);
+
+            return {
+                _meta: {},
+                success: true
+            };
+        }
+    );
+
+    // Handle resource unsubscription requests
+    server.server.setRequestHandler(
+        z.object({
+            method: z.literal('resources/unsubscribe'),
+            params: z.object({
+                uri: z.string()
+            })
+        }),
+        async (request, _extra) => {
+            const { uri } = request.params;
+            console.error(`[Resources] Unsubscription requested for: ${uri}`);
+
+            // Stop the subscription if it exists
+            if (subscriptions.has(uri)) {
+                clearInterval(subscriptions.get(uri)!);
+                subscriptions.delete(uri);
+                console.error(`[Resources] Stopped streaming for: ${uri}`);
+            } else {
+                console.error(`[Resources] No active subscription found for: ${uri}`);
+            }
+
+            return {
+                _meta: {},
+                success: true
+            };
+        }
+    );
+}
+
+async function sendResourceUpdate(server: McpServer, uri: string): Promise<void> {
+    // Generate updated market data for the streaming resource
+    if (uri === 'stream://market/AAPL') {
+        const basePrice = 150.25;
+        const currentPrice = basePrice + (Math.random() - 0.5) * 10;
+        const marketData = {
+            symbol: 'AAPL',
+            price: currentPrice,
+            open: basePrice,
+            high: currentPrice + 2.50,
+            low: currentPrice - 2.50,
+            close: currentPrice,
+            volume: Math.floor(Math.random() * 1000000) + 500000,
+            timestamp: Date.now()
+        };
+
+        // Send resource updated notification
+        await server.server.sendResourceUpdated({
+            uri,
+            content: {
+                uri,
+                mimeType: 'application/json',
+                text: JSON.stringify({
+                    ...marketData,
+                    _metadata: {
+                        streamable: true,
+                        subscription_supported: true,
+                        update_frequency: 'real-time',
+                        last_updated: new Date().toISOString()
+                    }
+                }, null, 2)
+            }
+        });
+    }
+}
+
+export function cleanupResourceSubscriptions(): void {
+    // Clean up all active subscriptions
+    for (const [uri, interval] of subscriptions.entries()) {
+        clearInterval(interval);
+        console.error(`[Resources] Cleaned up subscription for: ${uri}`);
+    }
+    subscriptions.clear();
 } 
