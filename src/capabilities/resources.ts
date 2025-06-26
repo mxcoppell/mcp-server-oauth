@@ -63,7 +63,8 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
         'stream://market/AAPL',
         {
             description: 'Real-time market data stream for AAPL. Supports subscriptions for live updates.',
-            mimeType: 'application/json'
+            mimeType: 'application/json',
+            streamable: true
         },
         async (uri, extra) => {
             if (requireAuth && !extra?.authInfo?.token) {
