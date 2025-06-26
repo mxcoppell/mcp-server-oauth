@@ -30,7 +30,12 @@ export class HttpTransport {
             origin: this.config.corsOrigin,
             credentials: true,
             methods: ['GET', 'POST', 'OPTIONS'],
-            allowedHeaders: ['Content-Type', 'Authorization']
+            allowedHeaders: [
+                'Content-Type',
+                'Authorization',
+                'mcp-protocol-version',
+                'x-requested-with'
+            ]
         }));
 
         // Body parsing
@@ -48,6 +53,18 @@ export class HttpTransport {
         // Well-known OAuth resource endpoint
         this.app.get('/.well-known/oauth-protected-resource', (_req, res) => {
             const response = this.wellKnownHandler.handleWellKnownRequest();
+            res.status(response.status).set(response.headers).send(response.body);
+        });
+
+        // OAuth authorization server metadata endpoint
+        this.app.get('/.well-known/oauth-authorization-server', (_req, res) => {
+            const response = this.wellKnownHandler.handleAuthorizationServerMetadataRequest();
+            res.status(response.status).set(response.headers).send(response.body);
+        });
+
+        // Dynamic Client Registration endpoint (mock)
+        this.app.post('/register', (req, res) => {
+            const response = this.wellKnownHandler.handleRegistrationRequest(req.body);
             res.status(response.status).set(response.headers).send(response.body);
         });
 

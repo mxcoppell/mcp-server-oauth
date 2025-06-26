@@ -17,7 +17,6 @@ export interface AuthorizationContext {
 export interface ServerConfig {
     transport: 'stdio' | 'http';
     httpPort: number;
-    oauthJwtSecret: string;
     oauthIssuer: string;
     oauthAudience: string;
     corsOrigin: string;
@@ -64,6 +63,19 @@ export interface WellKnownOAuthResource {
     authorization_servers: string[];
     scopes_supported: string[];
     bearer_methods_supported: string[];
+}
+
+export interface OAuthAuthorizationServerMetadata {
+    issuer: string;
+    authorization_endpoint: string;
+    token_endpoint: string;
+    registration_endpoint?: string;
+    scopes_supported: string[];
+    response_types_supported: string[];
+    response_modes_supported: string[];
+    grant_types_supported: string[];
+    token_endpoint_auth_methods_supported: string[];
+    code_challenge_methods_supported: string[];
 }
 
 export type TransportType = 'stdio' | 'http';

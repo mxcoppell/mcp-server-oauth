@@ -9,7 +9,6 @@
                 "MCP_TRANSPORT": "http",
                 "MCP_HTTP_PORT": "6060",
                 "ENABLE_AUTH": "false",
-                "OAUTH_JWT_SECRET": "demo-secret-key-for-testing",
                 "OAUTH_ISSUER": "https://signin.tradestation.com",
                 "OAUTH_AUDIENCE": "https://api.tradestation.com",
                 "CORS_ORIGIN": "*"

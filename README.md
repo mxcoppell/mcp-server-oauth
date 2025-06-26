@@ -36,15 +36,14 @@ npm run build
 
 ### Environment Variables
 
-| Variable           | Description                        | Default                           | Required      |
-| ------------------ | ---------------------------------- | --------------------------------- | ------------- |
-| `MCP_TRANSPORT`    | Transport type (`stdio` or `http`) | `stdio`                           | No            |
-| `MCP_HTTP_PORT`    | HTTP server port                   | `3000`                            | No            |
-| `OAUTH_JWT_SECRET` | JWT signing secret                 | `default-secret-for-dev`          | For HTTP auth |
-| `OAUTH_ISSUER`     | Token issuer URL                   | `https://signin.tradestation.com` | For HTTP auth |
-| `OAUTH_AUDIENCE`   | Expected token audience            | `https://api.tradestation.com`    | For HTTP auth |
-| `CORS_ORIGIN`      | CORS origin                        | `*`                               | No            |
-| `ENABLE_AUTH`      | Enable OAuth authentication        | `true`                            | No            |
+| Variable         | Description                        | Default                           | Required      |
+| ---------------- | ---------------------------------- | --------------------------------- | ------------- |
+| `MCP_TRANSPORT`  | Transport type (`stdio` or `http`) | `stdio`                           | No            |
+| `MCP_HTTP_PORT`  | HTTP server port                   | `3000`                            | No            |
+| `OAUTH_ISSUER`   | Token issuer URL                   | `https://signin.tradestation.com` | For HTTP auth |
+| `OAUTH_AUDIENCE` | Expected token audience            | `https://api.tradestation.com`    | For HTTP auth |
+| `CORS_ORIGIN`    | CORS origin                        | `*`                               | No            |
+| `ENABLE_AUTH`    | Enable OAuth authentication        | `true`                            | No            |
 
 ## 🚀 Usage
 

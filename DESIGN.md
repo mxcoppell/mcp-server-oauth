@@ -158,7 +158,6 @@ Returns the exact metadata format as specified:
 - `MCP_TRANSPORT`: Transport type (`stdio` | `http`)
 - `MCP_HTTP_PORT`: HTTP server port (default: 6060)
 - `ENABLE_AUTH`: Enable OAuth authentication (default: true for HTTP, false for stdio)
-- `OAUTH_JWT_SECRET`: JWT signing/verification secret
 - `OAUTH_ISSUER`: Token issuer URL (`https://signin.tradestation.com`)
 - `OAUTH_AUDIENCE`: Expected token audience (`https://api.tradestation.com`)
 - `CORS_ORIGIN`: CORS origin configuration (default: `*`)
@@ -192,7 +191,7 @@ Returns the exact metadata format as specified:
         "MCP_TRANSPORT": "http",
         "MCP_HTTP_PORT": "6060",
         "ENABLE_AUTH": "true",
-        "OAUTH_JWT_SECRET": "demo-secret-key-for-testing",
+
         "OAUTH_ISSUER": "https://signin.tradestation.com",
         "OAUTH_AUDIENCE": "https://api.tradestation.com"
       }
@@ -223,13 +222,10 @@ npx @modelcontextprotocol/inspector --config config/mcp-http-config.json
 
 ## Testing OAuth Implementation
 
-### Generate Test Token
-```bash
-OAUTH_JWT_SECRET="demo-secret-key-for-testing" \
-OAUTH_ISSUER="https://signin.tradestation.com" \
-OAUTH_AUDIENCE="https://api.tradestation.com" \
-node scripts/generate-test-token.js
-```
+### Auth0 Token Integration
+The server expects JWT tokens from Auth0. Configure your Auth0 application to issue tokens with:
+- **Issuer**: Your Auth0 domain (e.g., `https://your-domain.auth0.com/`)
+- **Audience**: `https://api.tradestation.com`
 
 ### Test Well-Known Endpoint
 ```bash
@@ -248,7 +244,7 @@ curl -i -X POST -H "Authorization: Bearer invalid-token" http://localhost:6060/m
 ### Test Valid Bearer Token
 ```bash
 curl -i -X POST \
-  -H "Authorization: Bearer <GENERATED_TOKEN>" \
+  -H "Authorization: Bearer <AUTH0_JWT_TOKEN>" \
   -H "Content-Type: application/json" \
   -d '{}' \
   http://localhost:6060/mcp
@@ -277,8 +273,7 @@ mcp-server-oauth/
 ├── config/
 │   ├── mcp-stdio-config.json     # Stdio transport config (no auth)
 │   └── mcp-http-config.json      # HTTP transport config (OAuth enabled)
-├── scripts/
-│   └── generate-test-token.js    # JWT token generation utility
+├── scripts/                      # Utility scripts
 ├── package.json                  # Dependencies and scripts
 ├── tsconfig.json                 # TypeScript configuration
 ├── DESIGN.md                     # This design document

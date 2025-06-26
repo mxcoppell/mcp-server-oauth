@@ -6,7 +6,6 @@ export function getServerConfig(): ServerConfig {
     return {
         transport: (env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio',
         httpPort: parseInt(env.MCP_HTTP_PORT || '6060', 10),
-        oauthJwtSecret: env.OAUTH_JWT_SECRET || 'default-secret-for-dev',
         oauthIssuer: env.OAUTH_ISSUER || 'https://signin.tradestation.com',
         oauthAudience: env.OAUTH_AUDIENCE || 'https://api.tradestation.com',
         corsOrigin: env.CORS_ORIGIN || '*',
@@ -23,9 +22,7 @@ export function validateConfig(config: ServerConfig): void {
         throw new Error('HTTP port must be specified for HTTP transport');
     }
 
-    if (config.enableAuth && !config.oauthJwtSecret) {
-        throw new Error('OAuth JWT secret must be specified when auth is enabled');
-    }
+
 }
 
 export const SERVER_INFO = {

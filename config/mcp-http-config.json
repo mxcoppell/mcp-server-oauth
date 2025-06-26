@@ -9,15 +9,15 @@
                 "MCP_TRANSPORT": "http",
                 "MCP_HTTP_PORT": "6060",
                 "ENABLE_AUTH": "true",
-                "OAUTH_JWT_SECRET": "demo-secret-key-for-testing",
-                "OAUTH_ISSUER": "https://signin.tradestation.com",
+                "OAUTH_ISSUER": "http://localhost:6060",
                 "OAUTH_AUDIENCE": "https://api.tradestation.com",
+                "OAUTH_CLIENT_ID": "Sg8Fa1mdIC7IAEYxbHw6wZn4gzjLccl7",
                 "CORS_ORIGIN": "*"
             }
         }
     },
     "transport": {
-        "type": "sse",
-        "url": "http://localhost:6060/sse"
+        "type": "streamable-http",
+        "url": "http://localhost:6060/mcp"
     }
 }
