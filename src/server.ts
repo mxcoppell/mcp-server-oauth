@@ -9,6 +9,7 @@ import { registerPrompts } from './capabilities/prompts.js';
 export class OAuthMcpServer {
     private mcpServer: McpServer;
     private config: ServerConfig;
+    private subscriptions: Map<string, NodeJS.Timeout> = new Map(); // Track active subscriptions
 
     constructor(config: ServerConfig) {
         this.config = config;
@@ -78,7 +79,24 @@ export class OAuthMcpServer {
                     throw new Error('Only streaming resources support subscriptions');
                 }
 
-                // For now, return success - actual streaming would need a more complex implementation
+                // Stop existing subscription if any
+                if (this.subscriptions.has(uri)) {
+                    clearInterval(this.subscriptions.get(uri)!);
+                    this.subscriptions.delete(uri);
+                }
+
+                // Start periodic updates every 2 seconds
+                const interval = setInterval(async () => {
+                    try {
+                        await this.sendResourceUpdate(uri);
+                    } catch (error) {
+                        log(`[MCP Server] Error sending resource update for ${uri}:`, error);
+                    }
+                }, 2000);
+
+                this.subscriptions.set(uri, interval);
+                log(`[MCP Server] Started streaming for: ${uri}`);
+
                 return {
                     _meta: {},
                     success: true
@@ -99,12 +117,57 @@ export class OAuthMcpServer {
                 const log = this.config.transport === 'stdio' ? console.error : console.log;
                 log(`[MCP Server] Resource unsubscription requested for: ${uri}`);
 
+                // Stop the subscription if it exists
+                if (this.subscriptions.has(uri)) {
+                    clearInterval(this.subscriptions.get(uri)!);
+                    this.subscriptions.delete(uri);
+                    log(`[MCP Server] Stopped streaming for: ${uri}`);
+                } else {
+                    log(`[MCP Server] No active subscription found for: ${uri}`);
+                }
+
                 return {
                     _meta: {},
                     success: true
                 };
             }
         );
+    }
+
+    private async sendResourceUpdate(uri: string): Promise<void> {
+        // Generate updated market data for the streaming resource
+        if (uri === 'stream://market/AAPL') {
+            const basePrice = 150.25;
+            const currentPrice = basePrice + (Math.random() - 0.5) * 10;
+            const marketData = {
+                symbol: 'AAPL',
+                price: currentPrice,
+                open: basePrice,
+                high: currentPrice + 2.50,
+                low: currentPrice - 2.50,
+                close: currentPrice,
+                volume: Math.floor(Math.random() * 1000000) + 500000,
+                timestamp: Date.now()
+            };
+
+            // Send resource updated notification
+            await this.mcpServer.server.sendResourceUpdated({
+                uri,
+                content: {
+                    uri,
+                    mimeType: 'application/json',
+                    text: JSON.stringify({
+                        ...marketData,
+                        _metadata: {
+                            streamable: true,
+                            subscription_supported: true,
+                            update_frequency: 'real-time',
+                            last_updated: new Date().toISOString()
+                        }
+                    }, null, 2)
+                }
+            });
+        }
     }
 
     getServer(): McpServer {
@@ -128,6 +191,14 @@ export class OAuthMcpServer {
         // For stdio transport, log to stderr to avoid interfering with JSON-RPC on stdout
         const log = this.config.transport === 'stdio' ? console.error : console.log;
         log('[MCP Server] Shutting down...');
+
+        // Clean up all active subscriptions
+        for (const [uri, interval] of this.subscriptions.entries()) {
+            clearInterval(interval);
+            log(`[MCP Server] Cleaned up subscription for: ${uri}`);
+        }
+        this.subscriptions.clear();
+
         await this.mcpServer.close();
     }
 } 
