@@ -80,7 +80,19 @@ Returns the exact metadata format as specified:
   "authorization_servers": [
     "https://signin.tradestation.com/"
   ],
-  "scopes_supported": ["ReadAccount", "Trade", "MarketData"],
+  "scopes_supported": [
+    "openid", 
+    "profile", 
+    "ReadAccount", 
+    "Trade", 
+    "TradeStation", 
+    "MarketData", 
+    "News", 
+    "Matrix", 
+    "OptionSpreads", 
+    "offline_access", 
+    "HotLists"
+  ],
   "bearer_methods_supported": ["header"]
 }
 ```

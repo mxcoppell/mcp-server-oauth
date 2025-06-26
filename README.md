@@ -86,16 +86,25 @@ GET /.well-known/oauth-protected-resource
 Response:
 ```json
 {
-  "resource": "https://api.tradestation.com",
-  "authorization_server": "https://signin.tradestation.com",
-  "scopes_supported": [
-    "read:account",
-    "read:market_data",
-    "trade:execute",
-    "stream:market_feed"
+  "resource": "https://api.tradestation.com/",
+  "resource_name": "TradeStation API",
+  "authorization_servers": [
+    "https://signin.tradestation.com/"
   ],
-  "bearer_methods_supported": ["header", "body"],
-  "resource_documentation": "https://api.tradestation.com/docs/oauth"
+  "scopes_supported": [
+    "openid", 
+    "profile", 
+    "ReadAccount", 
+    "Trade", 
+    "TradeStation", 
+    "MarketData", 
+    "News", 
+    "Matrix", 
+    "OptionSpreads", 
+    "offline_access", 
+    "HotLists"
+  ],
+  "bearer_methods_supported": ["header"]
 }
 ```
 
@@ -109,7 +118,7 @@ Authorization: Bearer <your-jwt-token>
 Invalid/missing tokens return:
 ```
 HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer realm="mcp-server", authorization_uri="https://signin.tradestation.com/authorize", resource_id="https://api.tradestation.com"
+WWW-Authenticate: Bearer resource_metadata="http://localhost:6060/.well-known/oauth-protected-resource"
 ```
 
 ## 🛠️ Capabilities
