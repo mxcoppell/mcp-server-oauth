@@ -1,27 +1,19 @@
-import { WellKnownOAuthResource, ServerConfig } from '../types/index.js';
+import { WellKnownOAuthResource } from '../types/index.js';
 
 export class WellKnownHandler {
-    private config: ServerConfig;
-
-    constructor(config: ServerConfig) {
-        this.config = config;
+    constructor() {
+        // No config needed - using spec-required hardcoded values
     }
 
     getOAuthResourceMetadata(): WellKnownOAuthResource {
         return {
-            resource: this.config.oauthAudience,
-            authorization_server: this.config.oauthIssuer,
-            scopes_supported: [
-                'read:account',
-                'read:market_data',
-                'trade:execute',
-                'stream:market_feed'
+            resource: "https://api.tradestation.com/",
+            resource_name: "TradeStation API",
+            authorization_servers: [
+                "https://signin.tradestation.com/"
             ],
-            bearer_methods_supported: [
-                'header',
-                'body'
-            ],
-            resource_documentation: 'https://api.tradestation.com/docs/oauth'
+            scopes_supported: ["ReadAccount", "Trade", "MarketData"],
+            bearer_methods_supported: ["header"]
         };
     }
 

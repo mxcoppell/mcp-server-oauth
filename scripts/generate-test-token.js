@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-const jwt = require('jsonwebtoken');
+import jwt from 'jsonwebtoken';
 
 const secret = process.env.OAUTH_JWT_SECRET || 'demo-secret-key-for-testing';
 const issuer = process.env.OAUTH_ISSUER || 'https://signin.tradestation.com';

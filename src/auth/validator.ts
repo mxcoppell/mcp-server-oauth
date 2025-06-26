@@ -74,6 +74,6 @@ export class TokenValidator {
     }
 
     generateWWWAuthenticateHeader(): string {
-        return `Bearer realm="mcp-server", authorization_uri="${this.config.oauthIssuer}/authorize", resource_id="${this.config.oauthAudience}"`;
+        return `Bearer resource_metadata="http://localhost:${this.config.httpPort}/.well-known/oauth-protected-resource"`;
     }
 } 

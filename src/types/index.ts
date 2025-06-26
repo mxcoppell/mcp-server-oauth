@@ -60,10 +60,10 @@ export interface StreamData {
 
 export interface WellKnownOAuthResource {
     resource: string;
-    authorization_server: string;
+    resource_name: string;
+    authorization_servers: string[];
     scopes_supported: string[];
     bearer_methods_supported: string[];
-    resource_documentation: string;
 }
 
 export type TransportType = 'stdio' | 'http';

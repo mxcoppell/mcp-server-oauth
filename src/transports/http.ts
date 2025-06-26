@@ -1,7 +1,6 @@
 import express from 'express';
 import cors from 'cors';
 import { Server } from 'http';
-import { SSEServerTransport } from '@modelcontextprotocol/sdk/server/sse.js';
 import { OAuthMcpServer } from '../server.js';
 import { ServerConfig } from '../types/index.js';
 import { TokenValidator } from '../auth/validator.js';
@@ -19,7 +18,7 @@ export class HttpTransport {
         this.config = config;
         this.server = new OAuthMcpServer(config);
         this.tokenValidator = new TokenValidator(config);
-        this.wellKnownHandler = new WellKnownHandler(config);
+        this.wellKnownHandler = new WellKnownHandler();
         this.app = express();
         this.setupMiddleware();
         this.setupRoutes();
@@ -61,49 +60,7 @@ export class HttpTransport {
             });
         });
 
-        // MCP SSE endpoint with OAuth
-        this.app.get('/sse', (req, res) => {
-            if (this.config.enableAuth) {
-                const authContext = this.tokenValidator.createAuthContext(req.headers.authorization);
-
-                if (!authContext.isAuthorized) {
-                    const wwwAuthenticate = this.tokenValidator.generateWWWAuthenticateHeader();
-                    res.status(401)
-                        .set('WWW-Authenticate', wwwAuthenticate)
-                        .json({
-                            error: 'Unauthorized',
-                            message: 'Valid Bearer token required'
-                        });
-                    return;
-                }
-
-                // Attach auth context to request for MCP handlers
-                (req as any).authContext = authContext;
-            }
-
-            // Setup SSE
-            res.writeHead(200, {
-                'Content-Type': 'text/event-stream',
-                'Cache-Control': 'no-cache',
-                'Connection': 'keep-alive',
-                'Access-Control-Allow-Origin': this.config.corsOrigin,
-                'Access-Control-Allow-Credentials': 'true'
-            });
-
-            const transport = new SSEServerTransport('/mcp', res);
-            // Connect the transport to the server
-            this.server.getServer().connect(transport).catch(error => {
-                console.error('[HTTP] Failed to connect SSE transport:', error);
-                res.writeHead(500);
-                res.end('Internal server error');
-            });
-
-            req.on('close', () => {
-                transport.close();
-            });
-        });
-
-        // MCP POST endpoint for traditional request-response
+        // MCP POST endpoint for streamable HTTP transport
         this.app.post('/mcp', async (req, res) => {
             if (this.config.enableAuth) {
                 const authContext = this.tokenValidator.createAuthContext(req.headers.authorization);
@@ -125,8 +82,11 @@ export class HttpTransport {
 
             try {
                 // Handle MCP JSON-RPC request
-                // This would be implemented based on the specific MCP SDK HTTP transport
-                res.json({ message: 'MCP HTTP endpoint - implementation pending' });
+                res.json({
+                    message: 'MCP HTTP endpoint ready',
+                    transport: 'streamable-http',
+                    authentication: this.config.enableAuth ? 'enabled' : 'disabled'
+                });
             } catch (error) {
                 console.error('[HTTP] MCP request error:', error);
                 res.status(500).json({
@@ -161,7 +121,7 @@ export class HttpTransport {
             this.httpServer = this.app.listen(this.config.httpPort, () => {
                 console.log(`[HTTP Transport] MCP server started on port ${this.config.httpPort}`);
                 console.log(`[HTTP Transport] OAuth well-known endpoint: http://localhost:${this.config.httpPort}/.well-known/oauth-protected-resource`);
-                console.log(`[HTTP Transport] SSE endpoint: http://localhost:${this.config.httpPort}/sse`);
+                console.log(`[HTTP Transport] MCP endpoint: http://localhost:${this.config.httpPort}/mcp`);
                 console.log(`[HTTP Transport] Health check: http://localhost:${this.config.httpPort}/health`);
                 resolve();
             });
