@@ -48,7 +48,9 @@ export class OAuthMcpServer {
         };
 
         this.mcpServer.server.onclose = () => {
-            console.log('[MCP Server] Connection closed');
+            // For stdio transport, log to stderr to avoid interfering with JSON-RPC on stdout
+            const log = this.config.transport === 'stdio' ? console.error : console.log;
+            log('[MCP Server] Connection closed');
         };
     }
 
@@ -57,17 +59,22 @@ export class OAuthMcpServer {
     }
 
     async initialize(): Promise<void> {
-        console.log(`[MCP Server] Initializing ${SERVER_INFO.name} v${SERVER_INFO.version}`);
-        console.log(`[MCP Server] Transport: ${this.config.transport}`);
-        console.log(`[MCP Server] Authentication: ${this.config.enableAuth ? 'enabled' : 'disabled'}`);
+        // For stdio transport, log to stderr to avoid interfering with JSON-RPC on stdout
+        const log = this.config.transport === 'stdio' ? console.error : console.log;
+
+        log(`[MCP Server] Initializing ${SERVER_INFO.name} v${SERVER_INFO.version}`);
+        log(`[MCP Server] Transport: ${this.config.transport}`);
+        log(`[MCP Server] Authentication: ${this.config.enableAuth ? 'enabled' : 'disabled'}`);
 
         if (this.config.transport === 'http') {
-            console.log(`[MCP Server] HTTP Port: ${this.config.httpPort}`);
+            log(`[MCP Server] HTTP Port: ${this.config.httpPort}`);
         }
     }
 
     async shutdown(): Promise<void> {
-        console.log('[MCP Server] Shutting down...');
+        // For stdio transport, log to stderr to avoid interfering with JSON-RPC on stdout
+        const log = this.config.transport === 'stdio' ? console.error : console.log;
+        log('[MCP Server] Shutting down...');
         await this.mcpServer.close();
     }
 } 

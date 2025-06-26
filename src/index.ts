@@ -9,9 +9,12 @@ async function main() {
         const config = getServerConfig();
         validateConfig(config);
 
-        console.log('🚀 Starting MCP OAuth Server');
-        console.log(`Transport: ${config.transport}`);
-        console.log(`Authentication: ${config.enableAuth ? 'enabled' : 'disabled'}`);
+        // For stdio transport, log to stderr to avoid interfering with JSON-RPC on stdout
+        const log = config.transport === 'stdio' ? console.error : console.log;
+
+        log('🚀 Starting MCP OAuth Server');
+        log(`Transport: ${config.transport}`);
+        log(`Authentication: ${config.enableAuth ? 'enabled' : 'disabled'}`);
 
         let transport: StdioTransport | HttpTransport;
 
@@ -28,13 +31,13 @@ async function main() {
 
         // Handle graceful shutdown
         process.on('SIGINT', async () => {
-            console.log('\n🛑 Received SIGINT, shutting down gracefully...');
+            log('\n🛑 Received SIGINT, shutting down gracefully...');
             await transport.stop();
             process.exit(0);
         });
 
         process.on('SIGTERM', async () => {
-            console.log('\n🛑 Received SIGTERM, shutting down gracefully...');
+            log('\n🛑 Received SIGTERM, shutting down gracefully...');
             await transport.stop();
             process.exit(0);
         });
@@ -44,7 +47,7 @@ async function main() {
 
         // Keep the process alive for HTTP transport
         if (config.transport === 'http') {
-            console.log('✅ HTTP server is running. Press Ctrl+C to stop.');
+            log('✅ HTTP server is running. Press Ctrl+C to stop.');
             // Keep alive
             process.stdin.resume();
         }
