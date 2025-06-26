@@ -70,33 +70,34 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
                 throw new Error('Unauthorized: Valid Bearer token required');
             }
 
-            // Generate mock market data matching the MarketData interface
-            const basePrice = 175.23;
+            const symbol = 'AAPL';
+            const basePrice = 150.25;
+            const currentPrice = basePrice + (Math.random() - 0.5) * 10;
             const marketData: MarketData = {
-                symbol: 'AAPL',
-                price: basePrice + (Math.random() - 0.5) * 10,
-                open: basePrice + (Math.random() - 0.5) * 5,
-                high: basePrice + Math.random() * 8,
-                low: basePrice - Math.random() * 8,
-                close: basePrice + (Math.random() - 0.5) * 3,
+                symbol,
+                price: currentPrice,
+                open: basePrice,
+                high: currentPrice + 2.50,
+                low: currentPrice - 2.50,
+                close: currentPrice,
                 volume: Math.floor(Math.random() * 1000000) + 500000,
                 timestamp: Date.now()
             };
 
             return {
                 contents: [{
-                    uri: uri.href,
+                    uri: uri.toString(),
+                    mimeType: 'application/json',
                     text: JSON.stringify({
                         ...marketData,
-                        // Indicate this resource supports streaming
+                        // Resource metadata indicating streaming capability
                         _metadata: {
-                            type: 'streaming',
+                            streamable: true,
                             subscription_supported: true,
-                            update_frequency: '1s',
-                            last_updated: new Date().toISOString()
+                            update_frequency: 'real-time',
+                            note: 'This resource supports streaming. Use resources/subscribe to receive live updates.'
                         }
-                    }, null, 2),
-                    mimeType: 'application/json'
+                    }, null, 2)
                 }]
             };
         }
