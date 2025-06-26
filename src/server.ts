@@ -1,4 +1,5 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { z } from 'zod';
 import { SERVER_INFO } from './config.js';
 import { ServerConfig } from './types/index.js';
 import { registerTools } from './capabilities/tools.js';
@@ -34,6 +35,7 @@ export class OAuthMcpServer {
 
         this.setupCapabilities();
         this.setupEventHandlers();
+        this.setupResourceSubscriptionHandlers();
     }
 
     private setupCapabilities(): void {
@@ -55,6 +57,54 @@ export class OAuthMcpServer {
             const log = this.config.transport === 'stdio' ? console.error : console.log;
             log('[MCP Server] Connection closed');
         };
+    }
+
+    private setupResourceSubscriptionHandlers(): void {
+
+        // Handle resource subscription requests
+        this.mcpServer.server.setRequestHandler(
+            z.object({
+                method: z.literal('resources/subscribe'),
+                params: z.object({
+                    uri: z.string()
+                })
+            }),
+            async (request, _extra) => {
+                const { uri } = request.params;
+                const log = this.config.transport === 'stdio' ? console.error : console.log;
+                log(`[MCP Server] Resource subscription requested for: ${uri}`);
+
+                if (!uri.startsWith('stream://')) {
+                    throw new Error('Only streaming resources support subscriptions');
+                }
+
+                // For now, return success - actual streaming would need a more complex implementation
+                return {
+                    _meta: {},
+                    success: true
+                };
+            }
+        );
+
+        // Handle resource unsubscription requests
+        this.mcpServer.server.setRequestHandler(
+            z.object({
+                method: z.literal('resources/unsubscribe'),
+                params: z.object({
+                    uri: z.string()
+                })
+            }),
+            async (request, _extra) => {
+                const { uri } = request.params;
+                const log = this.config.transport === 'stdio' ? console.error : console.log;
+                log(`[MCP Server] Resource unsubscription requested for: ${uri}`);
+
+                return {
+                    _meta: {},
+                    success: true
+                };
+            }
+        );
     }
 
     getServer(): McpServer {
