@@ -8,7 +8,7 @@ A comprehensive Model Context Protocol (MCP) server implementation demonstrating
 - **OAuth 2.1 Authorization**: Bearer token authentication for HTTP transport
 - **Complete MCP Implementation**: Tools, Resources (streaming & non-streaming), and Prompts
 - **Security-First Design**: Proper token validation, audience checking, and error handling
-- **TradeStation API Integration**: Financial market data examples
+- **Trading API Integration**: Financial market data examples
 - **TypeScript**: Fully typed with strict type checking
 - **MCP Inspector Compatible**: Ready-to-use configurations included
 
@@ -36,14 +36,14 @@ npm run build
 
 ### Environment Variables
 
-| Variable         | Description                        | Default                           | Required      |
-| ---------------- | ---------------------------------- | --------------------------------- | ------------- |
-| `MCP_TRANSPORT`  | Transport type (`stdio` or `http`) | `stdio`                           | No            |
-| `MCP_HTTP_PORT`  | HTTP server port                   | `3000`                            | No            |
-| `OAUTH_ISSUER`   | Token issuer URL                   | `https://signin.tradestation.com` | For HTTP auth |
-| `OAUTH_AUDIENCE` | Expected token audience            | `https://api.tradestation.com`    | For HTTP auth |
-| `CORS_ORIGIN`    | CORS origin                        | `*`                               | No            |
-| `ENABLE_AUTH`    | Enable OAuth authentication        | `true`                            | No            |
+| Variable         | Description                        | Default                          | Required      |
+| ---------------- | ---------------------------------- | -------------------------------- | ------------- |
+| `MCP_TRANSPORT`  | Transport type (`stdio` or `http`) | `stdio`                          | No            |
+| `MCP_HTTP_PORT`  | HTTP server port                   | `3000`                           | No            |
+| `OAUTH_ISSUER`   | Token issuer URL                   | `https://mxcoppell.us.auth0.com` | For HTTP auth |
+| `OAUTH_AUDIENCE` | Expected token audience            | `https://fancy-api.trading`      | For HTTP auth |
+| `CORS_ORIGIN`    | CORS origin                        | `*`                              | No            |
+| `ENABLE_AUTH`    | Enable OAuth authentication        | `true`                           | No            |
 
 ## 🚀 Usage
 
@@ -85,17 +85,17 @@ GET /.well-known/oauth-protected-resource
 Response:
 ```json
 {
-  "resource": "https://api.tradestation.com/",
-  "resource_name": "TradeStation API",
+  "resource": "https://fancy-api.trading/",
+  "resource_name": "Trading API",
   "authorization_servers": [
-    "https://signin.tradestation.com/"
+    "https://mxcoppell.us.auth0.com/"
   ],
   "scopes_supported": [
     "openid", 
     "profile", 
     "ReadAccount", 
     "Trade", 
-    "TradeStation", 
+    "Trading", 
     "MarketData", 
     "News", 
     "Matrix", 
@@ -283,4 +283,4 @@ MIT License - see LICENSE file for details.
 - [MCP Specification](https://spec.modelcontextprotocol.io/)
 - [MCP TypeScript SDK](https://github.com/modelcontextprotocol/typescript-sdk)
 - [OAuth 2.1 Specification](https://datatracker.ietf.org/doc/html/draft-ietf-oauth-v2-1)
-- [TradeStation API](https://api.tradestation.com/) 
+- [Auth0 API](https://auth0.com/docs/api) 

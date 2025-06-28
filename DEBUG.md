@@ -52,8 +52,8 @@ In Terminal 1:
 export MCP_TRANSPORT=http
 export MCP_HTTP_PORT=6060
 export ENABLE_AUTH=true
-export OAUTH_ISSUER=https://signin.tradestation.com
-export OAUTH_AUDIENCE=https://api.tradestation.com
+export OAUTH_ISSUER=https://mxcoppell.us.auth0.com
+export OAUTH_AUDIENCE=https://fancy-api.trading
 export CORS_ORIGIN=*
 
 # Start the server
@@ -82,9 +82,9 @@ curl -s http://localhost:6060/.well-known/oauth-protected-resource | jq .
 Expected response:
 ```json
 {
-  "resource": "https://api.tradestation.com/",
-  "resource_name": "TradeStation API",
-  "authorization_servers": ["https://signin.tradestation.com/"],
+  "resource": "https://fancy-api.trading/",
+  "resource_name": "Trading API",
+  "authorization_servers": ["https://mxcoppell.us.auth0.com/"],
   "scopes_supported": ["ReadAccount", "Trade", "MarketData"],
   "bearer_methods_supported": ["header"]
 }

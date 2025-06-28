@@ -75,17 +75,17 @@ This implementation satisfies the following original requirements:
 Returns the exact metadata format as specified:
 ```json
 {
-  "resource": "https://api.tradestation.com/",
-  "resource_name": "TradeStation API",
+  "resource": "https://fancy-api.trading/",
+  "resource_name": "Trading API",
   "authorization_servers": [
-    "https://signin.tradestation.com/"
+    "https://mxcoppell.us.auth0.com/"
   ],
   "scopes_supported": [
     "openid", 
     "profile", 
     "ReadAccount", 
     "Trade", 
-    "TradeStation", 
+    "Trading", 
     "MarketData", 
     "News", 
     "Matrix", 
@@ -158,8 +158,8 @@ Returns the exact metadata format as specified:
 - `MCP_TRANSPORT`: Transport type (`stdio` | `http`)
 - `MCP_HTTP_PORT`: HTTP server port (default: 6060)
 - `ENABLE_AUTH`: Enable OAuth authentication (default: true for HTTP, false for stdio)
-- `OAUTH_ISSUER`: Token issuer URL (`https://signin.tradestation.com`)
-- `OAUTH_AUDIENCE`: Expected token audience (`https://api.tradestation.com`)
+- `OAUTH_ISSUER`: Token issuer URL (`https://mxcoppell.us.auth0.com`)
+- `OAUTH_AUDIENCE`: Expected token audience (`https://fancy-api.trading`)
 - `CORS_ORIGIN`: CORS origin configuration (default: `*`)
 
 ### Transport Configurations
@@ -192,8 +192,8 @@ Returns the exact metadata format as specified:
         "MCP_HTTP_PORT": "6060",
         "ENABLE_AUTH": "true",
 
-        "OAUTH_ISSUER": "https://signin.tradestation.com",
-        "OAUTH_AUDIENCE": "https://api.tradestation.com"
+        "OAUTH_ISSUER": "https://mxcoppell.us.auth0.com",
+        "OAUTH_AUDIENCE": "https://fancy-api.trading"
       }
     }
   }
@@ -225,7 +225,7 @@ npx @modelcontextprotocol/inspector --config config/mcp-http-config.json
 ### Auth0 Token Integration
 The server expects JWT tokens from Auth0. Configure your Auth0 application to issue tokens with:
 - **Issuer**: Your Auth0 domain (e.g., `https://your-domain.auth0.com/`)
-- **Audience**: `https://api.tradestation.com`
+- **Audience**: `https://fancy-api.trading`
 
 ### Test Well-Known Endpoint
 ```bash

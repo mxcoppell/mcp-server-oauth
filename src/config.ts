@@ -6,8 +6,8 @@ export function getServerConfig(): ServerConfig {
     return {
         transport: (env.MCP_TRANSPORT as 'stdio' | 'http') || 'stdio',
         httpPort: parseInt(env.MCP_HTTP_PORT || '6060', 10),
-        oauthIssuer: env.OAUTH_ISSUER || 'https://signin.tradestation.com',
-        oauthAudience: env.OAUTH_AUDIENCE || 'https://api.tradestation.com',
+        oauthIssuer: env.OAUTH_ISSUER || 'https://mxcoppell.us.auth0.com',
+        oauthAudience: env.OAUTH_AUDIENCE || 'https://fancy-api.trading',
         corsOrigin: env.CORS_ORIGIN || '*',
         enableAuth: env.ENABLE_AUTH !== 'false',
     };
@@ -30,5 +30,5 @@ export const SERVER_INFO = {
     version: '1.0.0',
     description: 'MCP Server with OAuth 2.1 Authorization',
     vendor: 'MCP OAuth Example',
-    protocolVersion: '2025-06-18',
+    protocolVersion: '2025-03-26',
 } as const; 

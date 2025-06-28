@@ -1,29 +1,24 @@
-import { WellKnownOAuthResource, OAuthAuthorizationServerMetadata } from '../types/index.js';
+import { WellKnownOAuthResource, OAuthAuthorizationServerMetadata, ServerConfig } from '../types/index.js';
 
 export class WellKnownHandler {
-    constructor() {
-        // No config needed - using spec-required hardcoded values
+    private config: ServerConfig;
+
+    constructor(config: ServerConfig) {
+        this.config = config;
     }
 
     getOAuthResourceMetadata(): WellKnownOAuthResource {
         return {
-            resource: "https://api.tradestation.com/",
-            resource_name: "TradeStation API",
+            resource: this.config.oauthAudience,
+            resource_name: "Trading API",
             authorization_servers: [
-                "http://localhost:6060"
+                `http://localhost:${this.config.httpPort}`
             ],
             scopes_supported: [
-                "openid",
-                "profile",
-                "ReadAccount",
-                "Trade",
-                "TradeStation",
-                "MarketData",
-                "News",
-                "Matrix",
-                "OptionSpreads",
-                "offline_access",
-                "HotLists"
+                "marketdata",
+                "realtime",
+                "brokerage",
+                "orderexecution"
             ],
             bearer_methods_supported: ["header"]
         };
@@ -47,28 +42,26 @@ export class WellKnownHandler {
 
     getOAuthAuthorizationServerMetadata(): OAuthAuthorizationServerMetadata {
         return {
-            issuer: "http://localhost:6060",
-            authorization_endpoint: "https://signin.tradestation.com/authorize",
-            token_endpoint: "https://signin.tradestation.com/oauth/token",
-            registration_endpoint: "http://localhost:6060/register",
+            issuer: this.config.oauthIssuer,
+            authorization_endpoint: `http://localhost:${this.config.httpPort}/authorize`,
+            token_endpoint: `http://localhost:${this.config.httpPort}/token`,
+            registration_endpoint: `http://localhost:${this.config.httpPort}/register`,
             scopes_supported: [
                 "openid",
                 "profile",
-                "ReadAccount",
-                "Trade",
-                "TradeStation",
-                "MarketData",
-                "News",
-                "Matrix",
-                "OptionSpreads",
-                "offline_access",
-                "HotLists"
+                "marketdata",
+                "realtime",
+                "brokerage",
+                "orderexecution"
             ],
             response_types_supported: ["code"],
             response_modes_supported: ["query"],
             grant_types_supported: ["authorization_code", "refresh_token"],
             token_endpoint_auth_methods_supported: ["none"],
-            code_challenge_methods_supported: ["S256"]
+            code_challenge_methods_supported: ["S256"],
+            // OAuth provider-specific extensions
+            audience: this.config.oauthAudience,
+            require_request_uri_registration: false,
         };
     }
 
@@ -90,7 +83,7 @@ export class WellKnownHandler {
 
     handleRegistrationRequest(requestBody: any): { status: number; headers: Record<string, string>; body: string } {
         // Mock Dynamic Client Registration endpoint for PKCE public clients
-        // Always returns the pre-configured TradeStation client ID
+        // Always returns the pre-configured Auth0 client ID
 
         // Validate request body
         if (!requestBody || typeof requestBody !== 'object') {
@@ -109,21 +102,23 @@ export class WellKnownHandler {
             };
         }
 
-        // Use TradeStation-compatible redirect URIs
+        // Use Auth0-compatible redirect URIs
         // MCP Inspector uses its own hardcoded callback URL regardless of what we return
-        const tradeStationRedirectUris = [
-            // Actual TradeStation redirect URI (confirmed from Auth0 config)
-            "https://signin.tradestation.com/login/callback"
+        const auth0RedirectUris = [
+            // MCP Inspector default callback URL
+            "http://localhost:6274/oauth/callback",
+            // MCP Inspector debug callback URL (actually being used)
+            "http://localhost:6274/oauth/callback/debug"
         ];
 
         // If client provided redirect URIs, check if any match our allowed list
-        let redirectUris = tradeStationRedirectUris;
+        let redirectUris = auth0RedirectUris;
 
         if (Array.isArray(requestBody.redirect_uris) && requestBody.redirect_uris.length > 0) {
             // Find intersection between requested URIs and our allowed URIs
             const requestedUris = requestBody.redirect_uris;
             const matchingUris = requestedUris.filter((uri: string) =>
-                tradeStationRedirectUris.includes(uri)
+                auth0RedirectUris.includes(uri)
             );
 
             if (matchingUris.length > 0) {
@@ -136,13 +131,15 @@ export class WellKnownHandler {
 
         // Registration response optimized for PKCE public clients
         const registrationResponse = {
-            client_id: "Sg8Fa1mdIC7IAEYxbHw6wZn4gzjLccl7",
-            client_name: requestBody.client_name || "MCP Inspector",
+            client_id: "E6nNx2Hlko4ZddCDAzdBqspgGWEP2Y2c",
+            client_name: requestBody.client_name || "MCP Server OAuth",
             redirect_uris: redirectUris,
             grant_types: ["authorization_code", "refresh_token"],
             response_types: ["code"],
-            scope: "openid profile ReadAccount Trade TradeStation MarketData News Matrix OptionSpreads offline_access HotLists",
+            scope: "openid profile marketdata realtime brokerage orderexecution",
             token_endpoint_auth_method: "none",  // PKCE - no client secret
+            // OAuth provider-specific hints for MCP Inspector
+            audience: this.config.oauthAudience,
             // Note: No client_secret returned - this is a public client using PKCE
         };
 

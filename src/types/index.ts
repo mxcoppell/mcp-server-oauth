@@ -1,6 +1,6 @@
 export interface OAuthTokenPayload {
     sub: string;
-    aud: string;
+    aud: string | string[];
     iss: string;
     exp: number;
     iat: number;
@@ -76,6 +76,8 @@ export interface OAuthAuthorizationServerMetadata {
     grant_types_supported: string[];
     token_endpoint_auth_methods_supported: string[];
     code_challenge_methods_supported: string[];
+    audience?: string;
+    require_request_uri_registration?: boolean;
 }
 
 export type TransportType = 'stdio' | 'http';

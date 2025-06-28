@@ -9,9 +9,9 @@
                 "MCP_TRANSPORT": "http",
                 "MCP_HTTP_PORT": "6060",
                 "ENABLE_AUTH": "true",
-                "OAUTH_ISSUER": "http://localhost:6060",
-                "OAUTH_AUDIENCE": "https://api.tradestation.com",
-                "OAUTH_CLIENT_ID": "Sg8Fa1mdIC7IAEYxbHw6wZn4gzjLccl7",
+                "OAUTH_ISSUER": "https://mxcoppell.us.auth0.com",
+                "OAUTH_AUDIENCE": "https://fancy-api.trading",
+                "OAUTH_CLIENT_ID": "E6nNx2Hlko4ZddCDAzdBqspgGWEP2Y2c",
                 "CORS_ORIGIN": "*"
             }
         }
