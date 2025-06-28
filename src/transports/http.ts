@@ -123,7 +123,7 @@ export class HttpTransport {
                     if (sessionId && this.sessions.has(sessionId)) {
                         // Use existing session
                         const transport = this.sessions.get(sessionId)!;
-                        await transport.handleRequest(req, res, req.body);
+                        await transport.handleRequest(req, res);
                     } else if (!sessionId && isInitRequest) {
                         // New initialization request - create new session
                         const transport = new StreamableHTTPServerTransport({
@@ -147,7 +147,7 @@ export class HttpTransport {
                         const sessionServer = new OAuthMcpServer(this.config);
                         await sessionServer.getServer().connect(transport);
 
-                        await transport.handleRequest(req, res, req.body);
+                        await transport.handleRequest(req, res);
                     } else {
                         // Invalid request - no session ID and not initialization, or invalid session ID
                         res.status(400).json({
