@@ -10,6 +10,7 @@ import {
 } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import { registerResources } from '../capabilities/resources.js';
 
 export class HttpTransport {
     private app: express.Application;
@@ -123,7 +124,7 @@ export class HttpTransport {
                     if (sessionId && this.sessions.has(sessionId)) {
                         // Use existing session
                         const transport = this.sessions.get(sessionId)!;
-                        await transport.handleRequest(req, res);
+                        await transport.handleRequest(req, res, req.body);
                     } else if (!sessionId && isInitRequest) {
                         // New initialization request - create new session
                         const transport = new StreamableHTTPServerTransport({
@@ -145,9 +146,10 @@ export class HttpTransport {
 
                         // Create a new server instance for this session
                         const sessionServer = new OAuthMcpServer(this.config);
+                        registerResources(sessionServer.getServer());
                         await sessionServer.getServer().connect(transport);
 
-                        await transport.handleRequest(req, res);
+                        await transport.handleRequest(req, res, req.body);
                     } else {
                         // Invalid request - no session ID and not initialization, or invalid session ID
                         res.status(400).json({
