@@ -3,6 +3,7 @@
 import { getServerConfig, validateConfig } from './config.js';
 import { StdioTransport } from './transports/stdio.js';
 import { HttpTransport } from './transports/http.js';
+import { cleanupResourceSubscriptions } from './capabilities/resources.js';
 
 async function main() {
     try {
@@ -32,12 +33,14 @@ async function main() {
         // Handle graceful shutdown
         process.on('SIGINT', async () => {
             log('\n🛑 Received SIGINT, shutting down gracefully...');
+            cleanupResourceSubscriptions();
             await transport.stop();
             process.exit(0);
         });
 
         process.on('SIGTERM', async () => {
             log('\n🛑 Received SIGTERM, shutting down gracefully...');
+            cleanupResourceSubscriptions();
             await transport.stop();
             process.exit(0);
         });

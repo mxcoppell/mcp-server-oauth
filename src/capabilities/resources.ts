@@ -14,7 +14,7 @@ export function registerResources(server: McpServer): void {
             description: 'Get detailed account information and portfolio summary',
             mimeType: 'application/json'
         },
-        async (uri) => {
+        async (uri: URL) => {
             const cacheKey = uri.toString();
             const cached = accountCache.get(cacheKey);
 
@@ -61,8 +61,8 @@ export function registerResources(server: McpServer): void {
             description: 'Real-time market data stream for AAPL. Supports subscriptions for live updates.',
             mimeType: 'application/json',
             streamable: true,
-            onSubscribe: async (uri: string) => {
-                console.log(`[Resources] Client subscribed to: ${uri}`);
+            onSubscribe: (uri: string) => {
+                console.log(`[Resources] Client SUBscribed to: ${uri}`);
                 if (subscriptions.has(uri)) {
                     clearInterval(subscriptions.get(uri));
                 }
@@ -72,8 +72,8 @@ export function registerResources(server: McpServer): void {
                 }, 2000);
                 subscriptions.set(uri, interval);
             },
-            onUnsubscribe: async (uri: string) => {
-                console.log(`[Resources] Client unsubscribed from: ${uri}`);
+            onUnsubscribe: (uri: string) => {
+                console.log(`[Resources] Client UNsubscribed from: ${uri}`);
                 if (subscriptions.has(uri)) {
                     clearInterval(subscriptions.get(uri));
                     subscriptions.delete(uri);
