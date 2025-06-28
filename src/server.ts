@@ -1,7 +1,7 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { SubscribeRequestSchema, UnsubscribeRequestSchema, McpError, ErrorCode } from '@modelcontextprotocol/sdk/types.js';
 import { SERVER_INFO } from './config.js';
-import { ServerConfig } from './types/index.js';
+import { ServerConfig, AuthorizationContext } from './types/index.js';
 import { registerTools } from './capabilities/tools.js';
 import { registerResources, cleanupResourceSubscriptions } from './capabilities/resources.js';
 import { registerPrompts } from './capabilities/prompts.js';
@@ -20,42 +20,35 @@ export function registerResourceSubscriptionCallbacks(uri: string, callbacks: Su
 }
 
 export class OAuthMcpServer {
-    private mcpServer: McpServer;
+    private server: McpServer;
     private config: ServerConfig;
+    private authContext: AuthorizationContext | null;
 
-    constructor(config: ServerConfig) {
+    constructor(config: ServerConfig, authContext: AuthorizationContext | null = null) {
         this.config = config;
-        this.mcpServer = new McpServer(
-            {
-                name: SERVER_INFO.name,
-                version: SERVER_INFO.version,
-                description: SERVER_INFO.description,
-                vendor: SERVER_INFO.vendor,
-                protocolVersion: SERVER_INFO.protocolVersion,
-            },
-            {
-                capabilities: {
-                    tools: {},
-                    resources: {
-                        subscribe: true,
-                        listChanged: true
-                    },
-                    prompts: {},
-                    logging: {},
+        this.authContext = authContext;
+        this.server = new McpServer(SERVER_INFO, {
+            capabilities: {
+                resources: {
+                    subscribe: true,
+                    listChanged: true
                 },
+                tools: {},
+                prompts: {},
+                logging: {},
+                experimental: {}
             }
-        );
+        });
 
-        this.setupCapabilities();
         this.setupEventHandlers();
+        this.registerCapabilities();
     }
 
-    private setupCapabilities(): void {
-        // Register all capabilities
-        // Auth validation is now handled at transport level (http.ts middleware)
-        registerTools(this.mcpServer);
-        registerResources(this.mcpServer);
-        registerPrompts(this.mcpServer);
+    private registerCapabilities(): void {
+        // Register all capabilities with auth context
+        registerTools(this.server, this.config, this.authContext);
+        registerResources(this.server, this.config, this.authContext);
+        registerPrompts(this.server, this.config, this.authContext);
 
         // Add custom subscription handlers that the SDK is missing
         this.setupSubscriptionHandlers();
@@ -63,7 +56,7 @@ export class OAuthMcpServer {
 
     private setupSubscriptionHandlers(): void {
         // Handler for resources/subscribe
-        this.mcpServer.server.setRequestHandler(
+        this.server.server.setRequestHandler(
             SubscribeRequestSchema,
             async (request) => {
                 const { uri } = request.params;
@@ -87,7 +80,7 @@ export class OAuthMcpServer {
         );
 
         // Handler for resources/unsubscribe
-        this.mcpServer.server.setRequestHandler(
+        this.server.server.setRequestHandler(
             UnsubscribeRequestSchema,
             async (request) => {
                 const { uri } = request.params;
@@ -111,11 +104,11 @@ export class OAuthMcpServer {
     }
 
     private setupEventHandlers(): void {
-        this.mcpServer.server.onerror = (error: Error) => {
+        this.server.server.onerror = (error: Error) => {
             console.error('[MCP Server Error]', error);
         };
 
-        this.mcpServer.server.onclose = () => {
+        this.server.server.onclose = () => {
             // For stdio transport, log to stderr to avoid interfering with JSON-RPC on stdout
             const log = this.config.transport === 'stdio' ? console.error : console.log;
             log('[MCP Server] Connection closed');
@@ -123,7 +116,17 @@ export class OAuthMcpServer {
     }
 
     getServer(): McpServer {
-        return this.mcpServer;
+        return this.server;
+    }
+
+    getAuthContext(): AuthorizationContext | null {
+        return this.authContext;
+    }
+
+    updateAuthContext(authContext: AuthorizationContext | null): void {
+        this.authContext = authContext;
+        // Re-register capabilities with updated auth context
+        this.registerCapabilities();
     }
 
     async initialize(): Promise<void> {
@@ -147,6 +150,6 @@ export class OAuthMcpServer {
         // Clean up all active resource subscriptions
         cleanupResourceSubscriptions();
 
-        await this.mcpServer.close();
+        await this.server.close();
     }
 } 

@@ -1,10 +1,27 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
+import { ServerConfig, AuthorizationContext } from '../types/index.js';
 
-export function registerPrompts(server: McpServer): void {
+export function registerPrompts(
+    server: McpServer,
+    config: ServerConfig,
+    authContext: AuthorizationContext | null
+): void {
+    // Get auth status for prompt context
+    const getAuthStatus = () => {
+        if (config.transport === 'stdio') {
+            return 'Note: Using stdio transport - no authentication available. Analysis will use demo data.';
+        } else if (!config.enableAuth || !authContext?.isAuthorized) {
+            return 'Note: Authentication required for personalized analysis and real portfolio data.';
+        } else {
+            return `Authenticated as user: ${authContext.payload?.sub}. Personalized analysis available.`;
+        }
+    };
+
     server.prompt(
         'trading_analysis',
         'Generate detailed trading analysis and recommendations',
         async () => {
+            const authStatus = getAuthStatus();
 
             return {
                 description: 'Comprehensive trading analysis and market insights',
@@ -19,6 +36,7 @@ export function registerPrompts(server: McpServer): void {
                                 '3. **Risk Assessment**: Market volatility and risk factors\n' +
                                 '4. **Trading Recommendations**: Specific actionable strategies\n' +
                                 '5. **Sector Analysis**: Performance across different sectors\n\n' +
+                                `${authStatus}\n\n` +
                                 'Base your analysis on current market data and provide specific, actionable insights for traders.'
                         }
                     },
@@ -46,6 +64,7 @@ export function registerPrompts(server: McpServer): void {
         'portfolio_optimization',
         'Optimize portfolio allocation and risk management',
         async () => {
+            const authStatus = getAuthStatus();
 
             return {
                 description: 'Portfolio optimization and risk management guidance',
@@ -60,6 +79,7 @@ export function registerPrompts(server: McpServer): void {
                                 '3. **Performance Metrics**: Risk-adjusted returns and benchmarking\n' +
                                 '4. **Rebalancing Strategy**: When and how to rebalance\n' +
                                 '5. **Tax Efficiency**: Tax-optimized allocation strategies\n\n' +
+                                `${authStatus}\n\n` +
                                 'Provide specific recommendations based on modern portfolio theory and current market conditions.'
                         }
                     },
@@ -85,6 +105,7 @@ export function registerPrompts(server: McpServer): void {
         'risk_assessment',
         'Comprehensive risk analysis and mitigation strategies',
         async () => {
+            const authStatus = getAuthStatus();
 
             return {
                 description: 'Detailed risk assessment and mitigation strategies',
@@ -99,6 +120,7 @@ export function registerPrompts(server: McpServer): void {
                                 '3. **Liquidity Risk**: Market liquidity and funding considerations\n' +
                                 '4. **Operational Risk**: Process and system vulnerabilities\n' +
                                 '5. **Regulatory Risk**: Compliance and regulatory changes\n\n' +
+                                `${authStatus}\n\n` +
                                 'Provide quantitative risk metrics and specific mitigation strategies for each risk category.'
                         }
                     },

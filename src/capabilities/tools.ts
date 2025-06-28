@@ -1,11 +1,151 @@
-
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { MarketData } from '../types/index.js';
+import { MarketData, ServerConfig, AuthorizationContext } from '../types/index.js';
 import { z } from 'zod';
 
 // Schema removed as it's handled by the tool registration
 
-export function registerTools(server: McpServer): void {
+export function registerTools(
+    server: McpServer,
+    config: ServerConfig,
+    authContext: AuthorizationContext | null
+): void {
+    // Example tool that demonstrates auth-aware behavior
+    server.tool(
+        'get-user-info',
+        'Get information about the current authenticated user',
+        {
+            type: 'object',
+            properties: {
+                includeDetails: {
+                    type: 'boolean',
+                    description: 'Whether to include detailed user information',
+                    default: false
+                }
+            }
+        },
+        async (args) => {
+            const { includeDetails } = args as { includeDetails?: boolean };
+
+            if (config.transport === 'stdio') {
+                return {
+                    content: [{
+                        type: 'text',
+                        text: 'User info not available in stdio transport (no authentication)'
+                    }]
+                };
+            }
+
+            if (!config.enableAuth) {
+                return {
+                    content: [{
+                        type: 'text',
+                        text: 'Authentication is disabled for this server'
+                    }]
+                };
+            }
+
+            if (!authContext?.isAuthorized || !authContext.payload) {
+                return {
+                    content: [{
+                        type: 'text',
+                        text: 'No authenticated user found'
+                    }]
+                };
+            }
+
+            const userInfo = {
+                subject: authContext.payload.sub,
+                issuer: authContext.payload.iss,
+                audience: authContext.payload.aud,
+                issuedAt: new Date(authContext.payload.iat * 1000).toISOString(),
+                expiresAt: new Date(authContext.payload.exp * 1000).toISOString()
+            };
+
+            if (includeDetails && authContext.payload) {
+                Object.assign(userInfo, {
+                    scope: authContext.payload.scope,
+                    clientId: authContext.payload.client_id
+                });
+            }
+
+            return {
+                content: [{
+                    type: 'text',
+                    text: `User Information:\n${JSON.stringify(userInfo, null, 2)}`
+                }]
+            };
+        }
+    );
+
+    // Example trading tool that requires authentication
+    server.tool(
+        'place-order',
+        'Place a trading order (requires authentication)',
+        {
+            type: 'object',
+            properties: {
+                symbol: {
+                    type: 'string',
+                    description: 'Stock symbol to trade'
+                },
+                side: {
+                    type: 'string',
+                    enum: ['buy', 'sell'],
+                    description: 'Order side'
+                },
+                quantity: {
+                    type: 'number',
+                    description: 'Number of shares'
+                }
+            },
+            required: ['symbol', 'side', 'quantity']
+        },
+        async (args) => {
+            const { symbol, side, quantity } = args as {
+                symbol: string;
+                side: 'buy' | 'sell';
+                quantity: number
+            };
+
+            if (config.transport === 'stdio') {
+                return {
+                    content: [{
+                        type: 'text',
+                        text: 'Trading not available in stdio transport (no authentication)'
+                    }]
+                };
+            }
+
+            if (!config.enableAuth || !authContext?.isAuthorized) {
+                return {
+                    content: [{
+                        type: 'text',
+                        text: 'Authentication required to place orders'
+                    }]
+                };
+            }
+
+            // Simulate order placement
+            const orderId = `ORD-${Date.now()}`;
+            const order = {
+                orderId,
+                symbol,
+                side,
+                quantity,
+                status: 'submitted',
+                timestamp: new Date().toISOString(),
+                userId: authContext.payload?.sub
+            };
+
+            return {
+                content: [{
+                    type: 'text',
+                    text: `Order placed successfully:\n${JSON.stringify(order, null, 2)}`
+                }]
+            };
+        }
+    );
+
     server.tool(
         'fetch_market_data',
         'Retrieve financial market data for a given symbol',

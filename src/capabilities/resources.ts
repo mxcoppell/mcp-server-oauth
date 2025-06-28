@@ -1,12 +1,102 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
-import { AccountInfo, MarketData } from '../types/index.js';
+import { AccountInfo, MarketData, ServerConfig, AuthorizationContext } from '../types/index.js';
 import { registerResourceSubscriptionCallbacks } from '../server.js';
 
 const accountCache = new Map<string, { data: AccountInfo; timestamp: number }>();
 const subscriptions = new Map<string, NodeJS.Timeout>(); // Track active subscriptions
 const CACHE_TTL = 30000; // 30 seconds
 
-export function registerResources(server: McpServer): void {
+export function registerResources(
+    server: McpServer,
+    config: ServerConfig,
+    authContext: AuthorizationContext | null
+): void {
+    // Authentication Token Information Resource
+    server.resource(
+        'Authentication Token Info',
+        'auth://token/info',
+        {
+            description: 'Display current authentication token information and decoded claims',
+            mimeType: 'application/json'
+        },
+        async (uri: URL) => {
+            if (config.transport === 'stdio') {
+                return {
+                    contents: [{
+                        uri: uri.href,
+                        text: JSON.stringify({
+                            transport: 'stdio',
+                            message: 'No authentication token for stdio transport',
+                            timestamp: new Date().toISOString()
+                        }, null, 2),
+                        mimeType: 'application/json'
+                    }]
+                };
+            }
+
+            if (!config.enableAuth) {
+                return {
+                    contents: [{
+                        uri: uri.href,
+                        text: JSON.stringify({
+                            transport: 'http',
+                            message: 'Authentication is disabled for this server',
+                            timestamp: new Date().toISOString()
+                        }, null, 2),
+                        mimeType: 'application/json'
+                    }]
+                };
+            }
+
+            if (!authContext?.isAuthorized) {
+                const errorInfo = {
+                    transport: 'http',
+                    authenticated: false,
+                    message: authContext?.token ? 'Invalid or expired token' : 'No authentication token provided',
+                    timestamp: new Date().toISOString()
+                };
+
+                if (authContext?.token) {
+                    errorInfo.message += ' - token was provided but failed validation';
+                }
+
+                return {
+                    contents: [{
+                        uri: uri.href,
+                        text: JSON.stringify(errorInfo, null, 2),
+                        mimeType: 'application/json'
+                    }]
+                };
+            }
+
+            // Valid auth context with decoded token
+            const tokenInfo = {
+                transport: 'http',
+                authenticated: true,
+                token: {
+                    subject: authContext.payload?.sub,
+                    issuer: authContext.payload?.iss,
+                    audience: authContext.payload?.aud,
+                    issuedAt: authContext.payload?.iat ? new Date(authContext.payload.iat * 1000).toISOString() : undefined,
+                    expiresAt: authContext.payload?.exp ? new Date(authContext.payload.exp * 1000).toISOString() : undefined,
+                    scope: authContext.payload?.scope,
+                    clientId: authContext.payload?.client_id,
+                    timeUntilExpiry: authContext.payload?.exp ?
+                        Math.max(0, authContext.payload.exp - Math.floor(Date.now() / 1000)) + ' seconds' : undefined
+                },
+                timestamp: new Date().toISOString()
+            };
+
+            return {
+                contents: [{
+                    uri: uri.href,
+                    text: JSON.stringify(tokenInfo, null, 2),
+                    mimeType: 'application/json'
+                }]
+            };
+        }
+    );
+
     // Non-streamable resource: Account Information
     server.resource(
         'Account Information',

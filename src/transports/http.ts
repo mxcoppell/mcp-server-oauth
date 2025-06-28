@@ -143,8 +143,19 @@ export class HttpTransport {
                             }
                         };
 
-                        // Create a new server instance for this session
-                        const sessionServer = new OAuthMcpServer(this.config);
+                        // Create a new server instance for this session with auth context
+                        const authContext = this.config.enableAuth ? (req as any).auth : null;
+                        const sessionServer = new OAuthMcpServer(this.config, authContext);
+                        await sessionServer.getServer().connect(transport);
+
+                        await transport.handleRequest(req, res, req.body);
+                    } else if (sessionId && isInitRequest) {
+                        // Handle re-initialization of existing session with updated auth context
+                        const transport = this.sessions.get(sessionId)!;
+                        const authContext = this.config.enableAuth ? (req as any).auth : null;
+
+                        // Create a new server instance with updated auth context
+                        const sessionServer = new OAuthMcpServer(this.config, authContext);
                         await sessionServer.getServer().connect(transport);
 
                         await transport.handleRequest(req, res, req.body);
