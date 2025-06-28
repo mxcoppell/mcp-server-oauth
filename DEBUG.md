@@ -34,13 +34,14 @@ The server will start in stdio mode and wait for JSON-RPC messages on stdin.
 
 In Terminal 2:
 ```bash
-npx @modelcontextprotocol/inspector --config config/mcp-stdio-config.json
+npx @modelcontextprotocol/inspector --config config/mcp-stdio-config.json --server mcp-server-oauth
 ```
 
 The inspector will:
 - Launch the MCP server as a child process
 - Connect via stdio transport
 - Open a web interface (usually at http://localhost:5173)
+- Display an authentication token URL for secure access
 
 ## Streamable HTTP Transport (OAuth Required)
 
