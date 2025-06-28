@@ -1,5 +1,6 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { AccountInfo, MarketData } from '../types/index.js';
+import { registerResourceSubscriptionCallbacks } from '../server.js';
 
 const accountCache = new Map<string, { data: AccountInfo; timestamp: number }>();
 const subscriptions = new Map<string, NodeJS.Timeout>(); // Track active subscriptions
@@ -54,32 +55,15 @@ export function registerResources(server: McpServer): void {
     );
 
     // Streamable resource: Market Data Stream
+    const streamUri = 'stream://market/AAPL';
+
+    // Register the resource (without subscription callbacks in metadata)
     server.resource(
         'Market Data Stream',
-        'stream://market/AAPL',
+        streamUri,
         {
             description: 'Real-time market data stream for AAPL. Supports subscriptions for live updates.',
-            mimeType: 'application/json',
-            streamable: true,
-            onSubscribe: (uri: string) => {
-                console.log(`[Resources] Client SUBscribed to: ${uri}`);
-                if (subscriptions.has(uri)) {
-                    clearInterval(subscriptions.get(uri));
-                }
-                const interval = setInterval(() => {
-                    console.log(`[Resources] Sending update for: ${uri}`);
-                    server.server.sendResourceUpdated({ uri });
-                }, 2000);
-                subscriptions.set(uri, interval);
-            },
-            onUnsubscribe: (uri: string) => {
-                console.log(`[Resources] Client UNsubscribed from: ${uri}`);
-                if (subscriptions.has(uri)) {
-                    clearInterval(subscriptions.get(uri));
-                    subscriptions.delete(uri);
-                    console.log(`[Resources] Stopped streaming for: ${uri}`);
-                }
-            }
+            mimeType: 'application/json'
         },
         async (uri: URL) => { // Read handler
             const marketData = generateMarketData('AAPL');
@@ -92,6 +76,29 @@ export function registerResources(server: McpServer): void {
             };
         }
     );
+
+    // Register subscription callbacks separately
+    registerResourceSubscriptionCallbacks(streamUri, {
+        onSubscribe: (uri: string) => {
+            console.log(`[Resources] Client SUBscribed to: ${uri}`);
+            if (subscriptions.has(uri)) {
+                clearInterval(subscriptions.get(uri));
+            }
+            const interval = setInterval(() => {
+                console.log(`[Resources] Sending update for: ${uri}`);
+                server.server.sendResourceUpdated({ uri });
+            }, 2000);
+            subscriptions.set(uri, interval);
+        },
+        onUnsubscribe: (uri: string) => {
+            console.log(`[Resources] Client UNsubscribed from: ${uri}`);
+            if (subscriptions.has(uri)) {
+                clearInterval(subscriptions.get(uri));
+                subscriptions.delete(uri);
+                console.log(`[Resources] Stopped streaming for: ${uri}`);
+            }
+        }
+    });
 }
 
 function generateMarketData(symbol: string): MarketData {
