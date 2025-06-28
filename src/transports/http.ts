@@ -6,34 +6,24 @@ import { ServerConfig } from '../types/index.js';
 import { TokenValidator } from '../auth/validator.js';
 import { WellKnownHandler } from '../auth/well-known.js';
 import {
-    StreamableHTTPServerTransport,
-    type StreamableHTTPServerTransportOptions
+    StreamableHTTPServerTransport
 } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
+import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
 
 export class HttpTransport {
-    private server: OAuthMcpServer;
     private app: express.Application;
     private httpServer: Server | null = null;
     private config: ServerConfig;
     private tokenValidator: TokenValidator;
     private wellKnownHandler: WellKnownHandler;
-    private transport: StreamableHTTPServerTransport;
+    private sessions = new Map<string, StreamableHTTPServerTransport>();
 
     constructor(config: ServerConfig) {
         this.config = config;
-        this.server = new OAuthMcpServer(config);
         this.app = express();
         this.tokenValidator = new TokenValidator(config);
         this.wellKnownHandler = new WellKnownHandler(config);
-
-        const transportOptions: StreamableHTTPServerTransportOptions = {
-            sessionIdGenerator: () => randomUUID(),
-        };
-        this.transport = new StreamableHTTPServerTransport(transportOptions);
-
-        this.server.getServer().connect(this.transport);
-
         this.setupMiddleware();
         this.setupRoutes();
     }
@@ -94,11 +84,95 @@ export class HttpTransport {
 
     private setupRoutes(): void {
         // --- MCP endpoint ---
-        const mcpPath = '/mcp';
-        this.app.use(mcpPath, this.createAuthMiddleware(), (req, res) => {
-            this.transport.handleRequest(req, res, req.body);
+        this.app.all('/mcp', this.createAuthMiddleware(), async (req, res) => {
+            try {
+                if (req.method === 'GET') {
+                    // Handle SSE connection - only for existing sessions
+                    const sessionId = req.headers['mcp-session-id'] as string;
+
+                    if (!sessionId) {
+                        res.status(400).json({
+                            jsonrpc: '2.0',
+                            error: { code: -32000, message: 'Bad Request: Mcp-Session-Id header is required for GET requests' },
+                            id: null
+                        });
+                        return;
+                    }
+
+                    const transport = this.sessions.get(sessionId);
+                    if (!transport) {
+                        res.status(404).json({
+                            jsonrpc: '2.0',
+                            error: { code: -32001, message: 'Session not found' },
+                            id: null
+                        });
+                        return;
+                    }
+
+                    console.log(`Received GET message for sessionId ${sessionId}`);
+                    await transport.handleRequest(req, res);
+
+                } else if (req.method === 'POST') {
+                    // Handle JSON-RPC requests
+                    const sessionId = req.headers['mcp-session-id'] as string;
+                    console.log(`Received POST message for sessionId ${sessionId || 'none'}`);
+
+                    // Check if this is an initialization request
+                    const isInitRequest = isInitializeRequest(req.body);
+
+                    if (sessionId && this.sessions.has(sessionId)) {
+                        // Use existing session
+                        const transport = this.sessions.get(sessionId)!;
+                        await transport.handleRequest(req, res, req.body);
+                    } else if (!sessionId && isInitRequest) {
+                        // New initialization request - create new session
+                        const transport = new StreamableHTTPServerTransport({
+                            sessionIdGenerator: () => randomUUID(),
+                            onsessioninitialized: (newSessionId) => {
+                                console.log(`Session initialized with ID: ${newSessionId}`);
+                                this.sessions.set(newSessionId, transport);
+                            }
+                        });
+
+                        // Set up cleanup handler
+                        transport.onclose = () => {
+                            const sid = transport.sessionId;
+                            if (sid && this.sessions.has(sid)) {
+                                console.log(`Transport closed for session ${sid}, removing from sessions map`);
+                                this.sessions.delete(sid);
+                            }
+                        };
+
+                        // Create a new server instance for this session
+                        const sessionServer = new OAuthMcpServer(this.config);
+                        await sessionServer.getServer().connect(transport);
+
+                        await transport.handleRequest(req, res, req.body);
+                    } else {
+                        // Invalid request - no session ID and not initialization, or invalid session ID
+                        res.status(400).json({
+                            jsonrpc: '2.0',
+                            error: {
+                                code: -32000,
+                                message: sessionId ? 'Session not found' : 'Bad Request: No valid session ID provided'
+                            },
+                            id: null
+                        });
+                        return;
+                    }
+                } else {
+                    res.status(405).json({ error: 'Method not allowed' });
+                }
+            } catch (error) {
+                console.error('Error handling MCP request:', error);
+                res.status(500).json({
+                    jsonrpc: '2.0',
+                    error: { code: -32603, message: 'Internal error' },
+                    id: null
+                });
+            }
         });
-        console.log(`[Transport] Streamable HTTP transport registered at ${mcpPath}`);
+        console.log(`[Transport] Streamable HTTP transport registered at /mcp`);
 
         // --- Existing non-MCP routes ---
         this.app.get('/.well-known/oauth-protected-resource', (_req, res) => {
@@ -180,36 +254,67 @@ export class HttpTransport {
     }
 
     async start(): Promise<void> {
-        await this.server.initialize();
+        const port = this.config.httpPort || 6060;
 
         return new Promise((resolve, reject) => {
-            this.httpServer = this.app.listen(this.config.httpPort, () => {
-                console.log(`[HTTP Transport] MCP server started on port ${this.config.httpPort}`);
-                console.log(`[HTTP Transport] OAuth well-known endpoint: http://localhost:${this.config.httpPort}/.well-known/oauth-protected-resource`);
-                console.log(`[HTTP Transport] MCP endpoint: http://localhost:${this.config.httpPort}/mcp`);
-                console.log(`[HTTP Transport] Health check: http://localhost:${this.config.httpPort}/health`);
-                resolve();
-            });
+            try {
+                this.httpServer = this.app.listen(port, () => {
+                    console.log(`🚀 MCP OAuth Server running on http://localhost:${port}`);
+                    console.log(`📋 Available endpoints:`);
+                    console.log(`   • GET  /mcp - MCP streamable HTTP endpoint`);
+                    console.log(`   • POST /mcp - MCP JSON-RPC endpoint`);
+                    console.log(`   • GET  /.well-known/oauth-authorization-server - OAuth metadata`);
+                    console.log(`   • POST /oauth/register - Dynamic client registration`);
+                    console.log(`   • GET  /oauth/authorize - OAuth authorization`);
+                    console.log(`   • POST /oauth/token - OAuth token exchange`);
+                    console.log(`   • POST /oauth/revoke - OAuth token revocation`);
+                    resolve();
+                });
 
-            this.httpServer.on('error', (error) => {
-                console.error('[HTTP Transport] Server error:', error);
+                this.httpServer.on('error', (error) => {
+                    console.error('HTTP server error:', error);
+                    reject(error);
+                });
+            } catch (error) {
+                console.error('Failed to start HTTP server:', error);
                 reject(error);
-            });
+            }
         });
     }
 
     async stop(): Promise<void> {
         console.log('[HTTP Transport] Stopping MCP server...');
 
+        // Clean up all transport sessions
+        for (const [sessionId, transport] of this.sessions) {
+            try {
+                await transport.close();
+            } catch (error) {
+                console.error(`[HTTP Transport] Error closing session ${sessionId}:`, error);
+            }
+        }
+        this.sessions.clear();
+
+        // Close the HTTP server
         if (this.httpServer) {
-            return new Promise((resolve) => {
-                this.httpServer!.close(() => {
-                    console.log('[HTTP Transport] HTTP server stopped');
-                    resolve();
+            return new Promise<void>((resolve, reject) => {
+                this.httpServer!.close((error) => {
+                    if (error) {
+                        console.error('[HTTP Transport] Error closing HTTP server:', error);
+                        reject(error);
+                    } else {
+                        console.log('[HTTP Transport] HTTP server closed successfully');
+                        resolve();
+                    }
                 });
+
+                // Force close after 5 seconds if graceful close doesn't work
+                setTimeout(() => {
+                    console.log('[HTTP Transport] Force closing HTTP server...');
+                    this.httpServer!.closeAllConnections?.();
+                    resolve();
+                }, 5000);
             });
         }
-
-        await this.server.shutdown();
     }
 } 
