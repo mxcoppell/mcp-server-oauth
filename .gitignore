@@ -125,6 +125,3 @@ test-tokens/
 
 # MCP Inspector cache
 .mcp-inspector/
-
-# SDK directories
-mcp-typescript-sdk/
