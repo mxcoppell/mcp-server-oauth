@@ -37,12 +37,11 @@ export class OAuthMcpServer {
     }
 
     private setupCapabilities(): void {
-        const requireAuth = this.config.transport === 'http' && this.config.enableAuth;
-
         // Register all capabilities
-        registerTools(this.mcpServer, requireAuth);
-        registerResources(this.mcpServer, requireAuth);
-        registerPrompts(this.mcpServer, requireAuth);
+        // Auth validation is now handled at transport level (http.ts middleware)
+        registerTools(this.mcpServer);
+        registerResources(this.mcpServer);
+        registerPrompts(this.mcpServer);
     }
 
     private setupEventHandlers(): void {

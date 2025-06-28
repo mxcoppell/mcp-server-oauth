@@ -13,6 +13,7 @@ export class HttpTransport {
     private config: ServerConfig;
     private tokenValidator: TokenValidator;
     private wellKnownHandler: WellKnownHandler;
+    private sseConnections: Map<string, express.Response> = new Map(); // Track SSE connections
 
     constructor(config: ServerConfig) {
         this.config = config;
@@ -150,6 +151,50 @@ export class HttpTransport {
             }
         });
 
+        // Server-Sent Events endpoint for notifications
+        this.app.get('/notifications', (req, res) => {
+            if (this.config.enableAuth) {
+                const authContext = this.tokenValidator.createAuthContext(req.headers.authorization);
+                if (!authContext.isAuthorized) {
+                    res.status(401).json({ error: 'Unauthorized' });
+                    return;
+                }
+            }
+
+            // Set SSE headers
+            res.writeHead(200, {
+                'Content-Type': 'text/event-stream',
+                'Cache-Control': 'no-cache',
+                'Connection': 'keep-alive',
+                'Access-Control-Allow-Origin': this.config.corsOrigin || '*',
+                'Access-Control-Allow-Credentials': 'true'
+            });
+
+            // Generate connection ID
+            const connectionId = `sse_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+            this.sseConnections.set(connectionId, res);
+
+            console.log(`[SSE] Client connected: ${connectionId}`);
+
+            // Send initial connection message
+            res.write(`data: ${JSON.stringify({
+                type: 'connection',
+                connectionId,
+                timestamp: Date.now()
+            })}\n\n`);
+
+            // Handle client disconnect
+            req.on('close', () => {
+                console.log(`[SSE] Client disconnected: ${connectionId}`);
+                this.sseConnections.delete(connectionId);
+            });
+
+            req.on('error', (error) => {
+                console.error(`[SSE] Connection error for ${connectionId}:`, error);
+                this.sseConnections.delete(connectionId);
+            });
+        });
+
         // Health check endpoint
         this.app.get('/health', (_req, res) => {
             res.json({
@@ -167,13 +212,34 @@ export class HttpTransport {
 
                 if (!authContext.isAuthorized) {
                     console.log('[MCP Auth] Authentication failed');
-                    const wwwAuthenticate = this.tokenValidator.generateWWWAuthenticateHeader();
-                    res.status(401)
-                        .set('WWW-Authenticate', wwwAuthenticate)
-                        .json({
-                            error: 'Unauthorized',
-                            message: 'Valid Bearer token required'
+
+                    // Distinguish between initial connection vs capability requests
+                    const method = req.body?.method;
+                    const isInitialConnection = method === 'initialize';
+
+                    if (isInitialConnection) {
+                        // For initial connection: trigger OAuth flow with WWW-Authenticate header
+                        console.log('[MCP Auth] Initial connection - triggering OAuth flow');
+                        const wwwAuthenticate = this.tokenValidator.generateWWWAuthenticateHeader();
+                        res.status(401)
+                            .set('WWW-Authenticate', wwwAuthenticate)
+                            .json({
+                                error: 'Unauthorized',
+                                message: 'Valid Bearer token required for initial connection'
+                            });
+                    } else {
+                        // For capability requests: reject immediately without OAuth flow
+                        console.log('[MCP Auth] Capability request - rejecting without OAuth flow');
+                        res.status(401).json({
+                            jsonrpc: '2.0',
+                            id: req.body?.id || null,
+                            error: {
+                                code: -32001,
+                                message: 'Unauthorized',
+                                data: 'Valid Bearer token required'
+                            }
                         });
+                    }
                     return;
                 }
 
@@ -200,289 +266,63 @@ export class HttpTransport {
                     return;
                 }
 
-                // Handle MCP protocol methods
+                // Handle MCP protocol methods by delegating to the actual server
                 const method = req.body.method;
                 const id = req.body.id;
-                // const params = req.body.params || {}; // For future use with method parameters
+                const params = req.body.params || {};
 
                 console.log('[MCP] Processing method:', JSON.stringify(method), 'with ID:', id);
-                console.log('[MCP] Full request body:', JSON.stringify(req.body, null, 2));
 
-                // Handle initialize specially since it needs protocol negotiation
-                if (method === 'initialize') {
-                    console.log('[MCP] Handling initialize request');
-                    const initializeResponse = {
-                        jsonrpc: '2.0',
-                        id: id,
-                        result: {
-                            protocolVersion: '2025-03-26',
-                            capabilities: {
-                                resources: {
-                                    subscribe: true,
-                                    listChanged: true
-                                },
-                                tools: {
-                                    listChanged: true
-                                },
-                                prompts: {
-                                    listChanged: true
-                                },
-                                logging: {}
-                            },
-                            serverInfo: {
-                                name: 'oauth-mcp-server',
-                                version: '1.0.0'
-                            }
-                        }
-                    };
-                    console.log('[MCP] Sending initialize response:', JSON.stringify(initializeResponse, null, 2));
-                    res.json(initializeResponse);
-                    return;
-                }
+                let response: any;
 
-                // Handle notifications/initialized
-                if (method === 'notifications/initialized') {
-                    console.log('[MCP] Handling notifications/initialized notification');
-                    // Notifications don't require responses per MCP spec, but for HTTP transport
-                    // we still need to acknowledge receipt with a 200 status
-                    res.status(200).json({ success: true });
-                    return;
-                }
-
-                // Handle specific MCP methods
+                // Handle specific MCP methods by delegating to the actual server
                 switch (method) {
-                    case 'resources/list':
-                        console.log('[MCP] Handling resources/list request');
-                        res.json({
-                            jsonrpc: '2.0',
-                            id: id,
-                            result: {
-                                resources: [
-                                    {
-                                        uri: 'trading://account',
-                                        name: 'Account Information',
-                                        description: 'Current trading account information including balance and positions',
-                                        mimeType: 'application/json'
-                                    },
-                                    {
-                                        uri: 'trading://positions',
-                                        name: 'Trading Positions',
-                                        description: 'Current open trading positions',
-                                        mimeType: 'application/json'
-                                    }
-                                ]
-                            }
-                        });
-                        return;
+                    case 'notifications/initialized':
+                        // This is a notification, just acknowledge receipt
+                        console.log('[MCP] Client connection initialized');
+                        response = null; // Notifications don't have responses
+                        break;
 
-                    case 'resources/read':
-                        console.log('[MCP] Handling resources/read request');
-                        const resourceUri = req.body.params?.uri;
-                        let resourceContent = {};
-
-                        if (resourceUri === 'trading://account') {
-                            resourceContent = {
-                                account: 'demo-account',
-                                balance: 50000,
-                                currency: 'USD',
-                                status: 'active'
-                            };
-                        } else if (resourceUri === 'trading://positions') {
-                            resourceContent = {
-                                positions: [
-                                    { symbol: 'AAPL', quantity: 100, price: 150.00 },
-                                    { symbol: 'GOOGL', quantity: 50, price: 2800.00 }
-                                ]
-                            };
-                        } else {
-                            resourceContent = { error: 'Resource not found' };
-                        }
-
-                        res.json({
-                            jsonrpc: '2.0',
-                            id: id,
-                            result: {
-                                contents: [
-                                    {
-                                        uri: resourceUri || 'trading://account',
-                                        mimeType: 'application/json',
-                                        text: JSON.stringify(resourceContent, null, 2)
-                                    }
-                                ]
-                            }
-                        });
-                        return;
-
+                    case 'initialize':
                     case 'tools/list':
-                        console.log('[MCP] Handling tools/list request');
-                        res.json({
-                            jsonrpc: '2.0',
-                            id: id,
-                            result: {
-                                tools: [
-                                    {
-                                        name: 'place_order',
-                                        description: 'Place a trading order',
-                                        inputSchema: {
-                                            type: 'object',
-                                            properties: {
-                                                symbol: { type: 'string', description: 'Stock symbol' },
-                                                quantity: { type: 'number', description: 'Number of shares' },
-                                                side: { type: 'string', enum: ['buy', 'sell'] }
-                                            },
-                                            required: ['symbol', 'quantity', 'side']
-                                        }
-                                    },
-                                    {
-                                        name: 'get_quote',
-                                        description: 'Get current stock quote',
-                                        inputSchema: {
-                                            type: 'object',
-                                            properties: {
-                                                symbol: { type: 'string', description: 'Stock symbol' }
-                                            },
-                                            required: ['symbol']
-                                        }
-                                    }
-                                ]
-                            }
-                        });
-                        return;
-
                     case 'tools/call':
-                        console.log('[MCP] Handling tools/call request');
-                        const toolName = req.body.params?.name;
-                        const toolArgs = req.body.params?.arguments || {};
-
-                        let toolResult = '';
-                        if (toolName === 'place_order') {
-                            toolResult = `Order placed: ${toolArgs.side} ${toolArgs.quantity} shares of ${toolArgs.symbol}`;
-                        } else if (toolName === 'get_quote') {
-                            toolResult = `Current price of ${toolArgs.symbol}: $${(Math.random() * 300 + 100).toFixed(2)}`;
-                        } else {
-                            toolResult = `Tool "${toolName}" executed with arguments: ${JSON.stringify(toolArgs)}`;
-                        }
-
-                        res.json({
-                            jsonrpc: '2.0',
-                            id: id,
-                            result: {
-                                content: [
-                                    {
-                                        type: 'text',
-                                        text: toolResult
-                                    }
-                                ]
-                            }
-                        });
-                        return;
-
+                    case 'resources/list':
+                    case 'resources/read':
+                    case 'resources/subscribe':
+                    case 'resources/unsubscribe':
                     case 'prompts/list':
-                        console.log('[MCP] Handling prompts/list request');
-                        res.json({
-                            jsonrpc: '2.0',
-                            id: id,
-                            result: {
-                                prompts: [
-                                    {
-                                        name: 'trading_analysis',
-                                        description: 'Analyze trading portfolio and provide recommendations',
-                                        arguments: [
-                                            {
-                                                name: 'symbol',
-                                                description: 'Stock symbol to analyze',
-                                                required: false
-                                            }
-                                        ]
-                                    },
-                                    {
-                                        name: 'risk_assessment',
-                                        description: 'Assess portfolio risk and suggest improvements',
-                                        arguments: []
-                                    }
-                                ]
-                            }
-                        });
-                        return;
-
                     case 'prompts/get':
-                        console.log('[MCP] Handling prompts/get request');
-                        const promptName = req.body.params?.name;
-                        const promptArgs = req.body.params?.arguments || {};
-
-                        let promptMessages: any[] = [];
-                        if (promptName === 'trading_analysis') {
-                            const symbol = promptArgs.symbol || 'your portfolio';
-                            promptMessages = [
-                                {
-                                    role: 'user',
-                                    content: {
-                                        type: 'text',
-                                        text: `Please analyze ${symbol} and provide trading recommendations based on current market conditions.`
-                                    }
-                                }
-                            ];
-                        } else if (promptName === 'risk_assessment') {
-                            promptMessages = [
-                                {
-                                    role: 'user',
-                                    content: {
-                                        type: 'text',
-                                        text: 'Analyze my current portfolio risk exposure and suggest risk management strategies.'
-                                    }
-                                }
-                            ];
-                        }
-
-                        res.json({
+                        // Delegate all methods to the actual MCP server for consistent capabilities
+                        const result = await this.callServerMethod(method, params);
+                        response = {
                             jsonrpc: '2.0',
                             id: id,
-                            result: {
-                                description: `Trading prompt: ${promptName}`,
-                                messages: promptMessages
-                            }
-                        });
-                        return;
-
-                    case 'completion/complete':
-                        console.log('[MCP] Handling completion/complete request');
-                        const completionRef = req.body.params?.ref;
-                        const argument = completionRef?.name || '';
-
-                        let completionValues = [];
-                        if (argument === 'symbol' || argument.includes('symbol')) {
-                            completionValues = ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'META'];
-                        } else if (argument === 'side') {
-                            completionValues = ['buy', 'sell'];
-                        } else {
-                            completionValues = ['suggestion1', 'suggestion2', 'suggestion3'];
-                        }
-
-                        res.json({
-                            jsonrpc: '2.0',
-                            id: id,
-                            result: {
-                                completion: {
-                                    values: completionValues,
-                                    total: completionValues.length,
-                                    hasMore: false
-                                }
-                            }
-                        });
-                        return;
+                            result: result
+                        };
+                        break;
 
                     default:
-                        console.log('[MCP] Unknown method:', method);
-                        res.json({
+                        response = {
                             jsonrpc: '2.0',
                             id: id,
                             error: {
                                 code: -32601,
-                                message: 'Method not found'
+                                message: 'Method not found',
+                                data: `Unknown method: ${method}`
                             }
-                        });
-                        return;
+                        };
                 }
+
+                // Send response (null for notifications)
+                if (response !== null) {
+                    console.log('[MCP] Sending response:', JSON.stringify(response, null, 2));
+                    res.json(response);
+                } else {
+                    // For notifications, send 204 No Content
+                    res.status(204).send();
+                }
+
+                return;
 
             } catch (error) {
                 console.error('[MCP] Request processing error:', error);
@@ -495,6 +335,7 @@ export class HttpTransport {
                         data: error instanceof Error ? error.message : 'Unknown error'
                     }
                 });
+                return;
             }
         });
 
@@ -516,6 +357,86 @@ export class HttpTransport {
         });
     }
 
+    /**
+     * Call a method on the MCP server directly using proper transport delegation
+     */
+    private async callServerMethod(method: string, params: any): Promise<any> {
+        return new Promise((resolve, reject) => {
+            try {
+                // Create a persistent transport for notifications
+                let responseHandled = false;
+                const persistentTransport = {
+                    send: async (message: any) => {
+                        if (message.method === 'notifications/resources/updated') {
+                            // Handle resource update notification - send via SSE
+                            this.broadcastNotification({
+                                type: 'resource_updated',
+                                data: message.params
+                            });
+                            return;
+                        }
+
+                        if (!responseHandled) {
+                            responseHandled = true;
+                            if (message.error) {
+                                reject(new Error(message.error.message || 'Server error'));
+                            } else {
+                                resolve(message.result);
+                            }
+                        }
+                    },
+                    onmessage: undefined as any,
+                    onerror: undefined as any,
+                    onclose: undefined as any,
+                    start: async () => { },
+                    close: async () => { }
+                };
+
+                // Connect and send the request
+                const mcpServer = this.server.getServer();
+                mcpServer.connect(persistentTransport).then(() => {
+                    // Send the method call through the transport
+                    if (persistentTransport.onmessage) {
+                        persistentTransport.onmessage({
+                            jsonrpc: '2.0',
+                            id: 1,
+                            method: method,
+                            params: params
+                        });
+                    }
+                }).catch(reject);
+
+                // Set timeout
+                setTimeout(() => {
+                    if (!responseHandled) {
+                        responseHandled = true;
+                        reject(new Error('Request timeout'));
+                    }
+                }, 10000);
+
+            } catch (error) {
+                reject(error);
+            }
+        });
+    }
+
+    /**
+     * Broadcast notification to all connected SSE clients
+     */
+    private broadcastNotification(notification: any): void {
+        const message = `data: ${JSON.stringify(notification)}\n\n`;
+
+        for (const [connectionId, res] of this.sseConnections.entries()) {
+            try {
+                res.write(message);
+                console.log(`[SSE] Notification sent to ${connectionId}`);
+            } catch (error) {
+                console.error(`[SSE] Failed to send notification to ${connectionId}:`, error);
+                this.sseConnections.delete(connectionId);
+            }
+        }
+    }
+
     async start(): Promise<void> {
         await this.server.initialize();
 
@@ -524,6 +445,7 @@ export class HttpTransport {
                 console.log(`[HTTP Transport] MCP server started on port ${this.config.httpPort}`);
                 console.log(`[HTTP Transport] OAuth well-known endpoint: http://localhost:${this.config.httpPort}/.well-known/oauth-protected-resource`);
                 console.log(`[HTTP Transport] MCP endpoint: http://localhost:${this.config.httpPort}/mcp`);
+                console.log(`[HTTP Transport] SSE notifications: http://localhost:${this.config.httpPort}/notifications`);
                 console.log(`[HTTP Transport] Health check: http://localhost:${this.config.httpPort}/health`);
                 resolve();
             });
@@ -537,6 +459,17 @@ export class HttpTransport {
 
     async stop(): Promise<void> {
         console.log('[HTTP Transport] Stopping MCP server...');
+
+        // Close all SSE connections
+        for (const [connectionId, res] of this.sseConnections.entries()) {
+            try {
+                res.end();
+                console.log(`[HTTP Transport] Closed SSE connection: ${connectionId}`);
+            } catch (error) {
+                console.error(`[HTTP Transport] Error closing SSE connection ${connectionId}:`, error);
+            }
+        }
+        this.sseConnections.clear();
 
         if (this.httpServer) {
             return new Promise((resolve) => {

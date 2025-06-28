@@ -5,7 +5,7 @@ import { z } from 'zod';
 
 // Schema removed as it's handled by the tool registration
 
-export function registerTools(server: McpServer, requireAuth: boolean = true): void {
+export function registerTools(server: McpServer): void {
     server.tool(
         'fetch_market_data',
         'Retrieve financial market data for a given symbol',
@@ -13,11 +13,7 @@ export function registerTools(server: McpServer, requireAuth: boolean = true): v
             symbol: z.string().min(1).max(10).describe('The stock symbol to fetch data for (e.g., AAPL, TSLA)'),
             timeframe: z.enum(['1m', '5m', '15m', '1h', '1d']).optional().default('1d').describe('The timeframe for the market data')
         },
-        async (args, extra) => {
-            // Validate authorization if required
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async (args) => {
 
             try {
                 const { symbol, timeframe } = args;
@@ -61,10 +57,7 @@ export function registerTools(server: McpServer, requireAuth: boolean = true): v
             account_id: z.string().describe('The account ID to calculate metrics for'),
             metric_type: z.enum(['return', 'volatility', 'sharpe_ratio', 'all']).optional().default('all').describe('The type of metric to calculate')
         },
-        async (args, extra) => {
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async (args) => {
 
             const { account_id, metric_type = 'all' } = args;
 

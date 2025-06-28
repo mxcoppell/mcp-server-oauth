@@ -6,7 +6,7 @@ const accountCache = new Map<string, { data: AccountInfo; timestamp: number }>()
 const subscriptions = new Map<string, NodeJS.Timeout>(); // Track active subscriptions
 const CACHE_TTL = 30000; // 30 seconds
 
-export function registerResources(server: McpServer, requireAuth: boolean = true): void {
+export function registerResources(server: McpServer): void {
     // Non-streamable resource: Account Information
     server.resource(
         'Account Information',
@@ -15,10 +15,7 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
             description: 'Get detailed account information and portfolio summary',
             mimeType: 'application/json'
         },
-        async (uri, extra) => {
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async (uri) => {
 
             const cacheKey = 'account_info';
             const cached = accountCache.get(cacheKey);
@@ -68,10 +65,7 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
             mimeType: 'application/json',
             streamable: true
         },
-        async (uri, extra) => {
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async (uri) => {
 
             const symbol = 'AAPL';
             const basePrice = 150.25;
@@ -107,10 +101,10 @@ export function registerResources(server: McpServer, requireAuth: boolean = true
     );
 
     // Setup resource subscription handlers
-    setupResourceSubscriptionHandlers(server, requireAuth);
+    setupResourceSubscriptionHandlers(server);
 }
 
-function setupResourceSubscriptionHandlers(server: McpServer, _requireAuth: boolean): void {
+function setupResourceSubscriptionHandlers(server: McpServer): void {
     // Handle resource subscription requests
     server.server.setRequestHandler(
         z.object({

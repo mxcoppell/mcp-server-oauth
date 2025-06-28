@@ -1,13 +1,10 @@
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 
-export function registerPrompts(server: McpServer, requireAuth: boolean = true): void {
+export function registerPrompts(server: McpServer): void {
     server.prompt(
         'trading_analysis',
         'Generate detailed trading analysis and recommendations',
-        async (extra) => {
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async () => {
 
             return {
                 description: 'Comprehensive trading analysis and market insights',
@@ -48,10 +45,7 @@ export function registerPrompts(server: McpServer, requireAuth: boolean = true):
     server.prompt(
         'portfolio_optimization',
         'Optimize portfolio allocation and risk management',
-        async (extra) => {
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async () => {
 
             return {
                 description: 'Portfolio optimization and risk management guidance',
@@ -90,10 +84,7 @@ export function registerPrompts(server: McpServer, requireAuth: boolean = true):
     server.prompt(
         'risk_assessment',
         'Comprehensive risk analysis and mitigation strategies',
-        async (extra) => {
-            if (requireAuth && !extra?.authInfo?.token) {
-                throw new Error('Unauthorized: Valid Bearer token required');
-            }
+        async () => {
 
             return {
                 description: 'Detailed risk assessment and mitigation strategies',
