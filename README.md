@@ -88,6 +88,21 @@ npx @modelcontextprotocol/inspector
 
 ## 🔐 OAuth Authentication
 
+> **📖 For detailed authentication architecture and flows, see [AUTH.md](AUTH.md)**
+
+### Quick Start
+
+For HTTP transport, include Bearer token in Authorization header:
+```
+Authorization: Bearer <your-jwt-token>
+```
+
+Invalid/missing tokens return:
+```
+HTTP/1.1 401 Unauthorized
+WWW-Authenticate: Bearer resource_metadata="http://localhost:6060/.well-known/oauth-protected-resource"
+```
+
 ### Well-Known Discovery Endpoint
 
 The server exposes OAuth metadata at:
@@ -115,20 +130,6 @@ Response (example with configured values):
 ```
 
 > **Note**: The actual values are configured via environment variables. See `.env.sample` for configuration details.
-```
-
-### Token Validation
-
-For HTTP transport, include Bearer token in Authorization header:
-```
-Authorization: Bearer <your-jwt-token>
-```
-
-Invalid/missing tokens return:
-```
-HTTP/1.1 401 Unauthorized
-WWW-Authenticate: Bearer resource_metadata="http://localhost:6060/.well-known/oauth-protected-resource"
-```
 
 ## 🛠️ Capabilities
 
