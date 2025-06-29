@@ -7,21 +7,22 @@ This document outlines the authentication architecture for the MCP server. The c
 The following diagram illustrates the high-level system architecture. It shows how the user, through an MCP client, interacts with all the supporting MCP server endpoints, which in turn rely on Auth0 for core identity services.
 
 ```mermaid
-graph TD;
+graph LR;
     User([User with<br>MCP Client]);
 
     subgraph "MCP Server (The Edge)"
         direction TB
-        W1["/.well-known/oauth-protected-resource"];
-        W2["/.well-known/oauth-authorization-server"];
+        W1["/.well-known/oauth-<br>protected-resource"];
+        W2["/.well-known/oauth-<br>authorization-server"];
         R["/register"];
         A["/authorize"];
     end
 
-    subgraph "Auth0 (The Core)"
+    subgraph "Auth0 (The Core)"  
+        direction TB
         C("User Authentication");
-        D("Token Issuance");
         E("User Directory");
+        D("Token Issuance");
         T["Auth0 /oauth/token"];
     end
 
