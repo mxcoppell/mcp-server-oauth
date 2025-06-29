@@ -219,26 +219,7 @@ export class HttpTransport {
             res.redirect(302, authorizeUrl);
         });
 
-        this.app.post('/token', async (req, res) => {
-            try {
-                const tokenBody = { ...req.body, audience: this.config.oauthAudience };
-                const requestBodyString = new URLSearchParams(tokenBody).toString();
-                const tokenEndpoint = `${this.config.oauthIssuer}/oauth/token`;
-                const response = await fetch(tokenEndpoint, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-                    body: requestBodyString
-                });
-                const tokenData = await response.json();
-                res.status(response.status).json(tokenData);
-            } catch (error) {
-                console.error('[OAuth] Token proxy error:', error);
-                res.status(500).json({
-                    error: 'token_request_failed',
-                    error_description: 'Failed to proxy token request to OAuth provider'
-                });
-            }
-        });
+
 
         this.app.get('/health', (_req, res) => {
             res.json({
@@ -275,10 +256,9 @@ export class HttpTransport {
                     console.log(`   • GET  /mcp - MCP streamable HTTP endpoint`);
                     console.log(`   • POST /mcp - MCP JSON-RPC endpoint`);
                     console.log(`   • GET  /.well-known/oauth-authorization-server - OAuth metadata`);
-                    console.log(`   • POST /oauth/register - Dynamic client registration`);
-                    console.log(`   • GET  /oauth/authorize - OAuth authorization`);
-                    console.log(`   • POST /oauth/token - OAuth token exchange`);
-                    console.log(`   • POST /oauth/revoke - OAuth token revocation`);
+                    console.log(`   • POST /register - Dynamic client registration`);
+                    console.log(`   • GET  /authorize - OAuth authorization`);
+                    console.log(`   • GET  /health - Health check endpoint`);
                     resolve();
                 });
 

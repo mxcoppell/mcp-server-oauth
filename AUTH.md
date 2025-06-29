@@ -1,6 +1,6 @@
 # Authentication Architecture and Flow
 
-This document outlines the authentication architecture for the MCP server. The core design principle is that the **MCP server supports the authorization flow at the edge but delegates the core authorization and token issuance logic to Auth0.** The MCP server is an active participant in the authentication flow, but it is not the ultimate source of identity. It acts as a secure facade or proxy to a dedicated, robust identity provider.
+This document outlines the authentication architecture for the MCP server. The core design principle is that the **MCP server supports the authorization flow at the edge but delegates the core authorization and token issuance logic to Auth0.** The MCP server is an active participant in the authentication flow, but it is not the ultimate source of identity. It acts as a secure facade to a dedicated, robust identity provider.
 
 ## Architecture Overview
 
@@ -16,13 +16,13 @@ graph TD;
         W2["/.well-known/oauth-authorization-server"];
         R["/register"];
         A["/authorize"];
-        T["/token"];
     end
 
     subgraph "Auth0 (The Core)"
         C("User Authentication");
         D("Token Issuance");
         E("User Directory");
+        T["Auth0 /oauth/token"];
     end
 
     User -- "(1) Discovers" --> W1;
@@ -32,33 +32,31 @@ graph TD;
     User -- "(5) Exchanges Token" --> T;
 
     A -- "delegates login to" --> C;
-    T -- "proxies token request to" --> D;
     C -- "checks" --> E;
-    D -- "uses" --> E;
+    T -- "uses" --> E;
 
     style User fill:#2E86AB,stroke:#fff,stroke-width:2px,color:#fff
     style W1 fill:#602F01,stroke:#333,stroke-width:2px
     style W2 fill:#602F01,stroke:#333,stroke-width:2px
     style R fill:#602F01,stroke:#333,stroke-width:2px
     style A fill:#602F01,stroke:#333,stroke-width:2px
-    style T fill:#602F01,stroke:#333,stroke-width:2px
     style C fill:#C73E1D,stroke:#fff,stroke-width:2px,color:#fff
     style D fill:#C73E1D,stroke:#fff,stroke-width:2px,color:#fff
+    style T fill:#C73E1D,stroke:#fff,stroke-width:2px,color:#fff
     style E fill:#A23B72,stroke:#fff,stroke-width:2px,color:#fff
 ```
 
 -   **MCP Server (The Edge)**: This is the component that clients interact with directly. It exposes the necessary OAuth 2.0 endpoints but does not implement the core logic itself.
 -   **Auth0 (The Core)**: This is our dedicated identity provider. It handles the heavy lifting of securely authenticating users, managing user profiles, and issuing cryptographically-signed access tokens.
 
-## Local Endpoints and Their Roles
+## MCP Server Endpoints and Their Roles
 
-The MCP server exposes several endpoints that act as a local facade for the Auth0 tenant. Here is a list of these endpoints and their specific roles:
+The MCP server exposes several OAuth discovery endpoints that provide metadata about the Auth0 tenant. Here is a list of these endpoints and their specific roles:
 
 -   **`/.well-known/oauth-protected-resource`**: A metadata endpoint that describes the protected resource (the API). It informs the client of the resource's identifier, available scopes, and the authorization server to use.
--   **`/.well-known/oauth-authorization-server`**: The authorization server discovery endpoint. It tells the client where to find key endpoints (`/authorize`, `/token`, `/register`) and what capabilities are supported (grant types, PKCE methods, etc.).
+-   **`/.well-known/oauth-authorization-server`**: The authorization server discovery endpoint. It tells the client where to find key endpoints (`/authorize`, `/register`) and the Auth0 token endpoint, along with what capabilities are supported (grant types, PKCE methods, etc.).
 -   **`/register`**: The Dynamic Client Registration (DCR) endpoint. The client calls this to register itself and receive a pre-configured Auth0 Application `client_id`.
--   **`/authorize`**: Initiates the user-interactive part of the flow. The local server acts as a middleman, redirecting the user to the actual Auth0 Universal Login page with the correct parameters.
--   **`/token`**: Handles the exchange of the `authorization_code` for an access token. The local server securely proxies this request to the real Auth0 token endpoint and relays the tokens back to the client.
+-   **`/authorize`**: Initiates the user-interactive part of the flow. The server acts as a middleman, redirecting the user to the actual Auth0 Universal Login page with the correct parameters including the required `audience` parameter.
 
 ## High-Level Message Flow
 
@@ -92,10 +90,8 @@ sequenceDiagram
         Server->>+Auth0: Delegates login to Auth0
         User->>Auth0: Enters credentials & gives consent
         Auth0-->>-Client: Redirects user back with an authorization code
-        Client->>+Server: Exchanges authorization code for token at /token
-        Server->>Auth0: Securely sends authorization code to Auth0
-        Auth0-->>Server: Issues secure Access Token
-        Server-->>-Client: Relays Access Token
+        Client->>+Auth0: Exchanges authorization code for token at Auth0 /oauth/token  
+        Auth0-->>-Client: Issues secure Access Token directly
     end
 
     rect rgb(40, 60, 70)
@@ -105,16 +101,16 @@ sequenceDiagram
     end
 ```
 
-## Local Endpoint Implementation Details
+## OAuth Discovery Implementation Details
 
-To fully understand the MCP server's role as an authentication proxy, it's essential to look at the implementation of its local OAuth endpoints. These endpoints are not just simple pass-throughs; they perform critical discovery, configuration, and modification functions to integrate correctly with Auth0.
+To fully understand the MCP server's role in OAuth discovery, it's essential to look at the implementation of its OAuth metadata endpoints. These endpoints provide critical discovery and configuration information to integrate correctly with Auth0.
 
 ### Discovery Endpoints (`/.well-known/*`)
 
 These endpoints follow IETF standards to allow clients to automatically discover how to interact with the protected resource and the authorization server.
 
 1.  **`/.well-known/oauth-protected-resource`**: This is the first stop for a client. It returns a simple JSON object that describes the API itself (the "Resource Server"). Its primary function is to tell the client the API's `audience` and the URL of the authorization server that protects it.
-2.  **`/.well-known/oauth-authorization-server`**: Once the client knows where the authorization server is, it queries this endpoint to get a detailed configuration object. This response contains all the URLs (`/authorize`, `/token`, `/register`) and the supported methods (`grant_types`, `response_types`, `code_challenge_methods`) needed to perform the OAuth flow.
+2.  **`/.well-known/oauth-authorization-server`**: Once the client knows where the authorization server is, it queries this endpoint to get a detailed configuration object. This response contains all the URLs (`/authorize`, `/register`) along with Auth0's token endpoint (`/oauth/token`) and the supported methods (`grant_types`, `response_types`, `code_challenge_methods`) needed to perform the OAuth flow.
 
 ### Dynamic Client Registration (`/register`)
 
@@ -135,19 +131,21 @@ This endpoint handles the first leg of the OAuth 2.0 Authorization Code Flow, wh
 2.  **Enforces Scopes**: The endpoint programmatically ensures that all required scopes (like `openid`, `profile`, and API-specific scopes) are included in the request sent to Auth0. This centralizes security policy and guarantees the application receives the necessary permissions.
 3.  **Abstracts the Identity Provider**: It receives the request at a local URL (`http://localhost:6060/authorize`) and then redirects the user's browser to the actual Auth0 tenant URL. This hides the specifics of the identity provider from the client, simplifying client configuration.
 
-### The `/token` Endpoint
+### Direct Auth0 Token Exchange
 
-This endpoint handles the second leg of the flow, where the application securely exchanges the temporary authorization code for a durable Access Token.
+The token exchange happens directly between the client and Auth0's `/oauth/token` endpoint, without any local proxy.
 
-**Necessity and Function:**
+**Client Requirements:**
 
-1.  **Injects the `audience` Parameter (Again)**: Just like the `/authorize` endpoint, the local `/token` endpoint injects the `audience` parameter into the request body before proxying it to Auth0. This is required by Auth0's token endpoint to validate the request against the correct API.
-2.  **Acts as a Secure Backend Proxy**: This endpoint acts as a direct, server-to-server proxy. It receives the code exchange request from the client and forwards it to the real Auth0 token endpoint. It then relays the response, containing the `access_token` and `refresh_token`, back to the client. This keeps the interaction with the core identity provider on the backend, which is a standard security practice.
+1.  **Must Include `audience` Parameter**: Since there's no local proxy to inject the `audience` parameter, clients must include the `audience` parameter (`https://fancy-api.trading`) in their token exchange requests to Auth0. This is critical for Auth0 to issue tokens scoped to the correct API.
+2.  **PKCE Support**: Clients must support PKCE (Proof Key for Code Exchange) since the flow uses public clients without client secrets.
+3.  **Direct HTTPS Communication**: Clients communicate directly with Auth0's secure endpoints, eliminating the need for a local token proxy.
 
 ## Security Considerations
 
-The described design, using PKCE and proxying to Auth0, is a standard and generally secure pattern. However, any design has potential risks to consider:
+The described design, using PKCE and direct Auth0 communication, is a standard and generally secure pattern. However, any design has potential risks to consider:
 
 1.  **Redirect URI Validation**: The most critical risk in this flow is weak `redirect_uri` validation. The server at the `/authorize` endpoint *must* strictly validate that the `redirect_uri` in the request exactly matches one of the URIs pre-registered for that `client_id`. Failure to do so could allow an attacker to have the authorization code sent to a malicious site.
-2.  **Server Compromise**: Since the MCP server acts as a central proxy, if it were compromised, an attacker could potentially intercept authorization codes or access tokens. When deployed, the server must be hardened and monitored.
-3.  **Dynamic Client Registration (DCR) Security**: If the `/register` endpoint is open and not properly secured, it could potentially be a vector for attack (e.g., allowing malicious clients to register). In the current flow, it is used to hand out a pre-existing configuration, which is safer. For production, access to this endpoint should be restricted. 
+2.  **Client-Side Audience Parameter**: Since clients now communicate directly with Auth0 for token exchange, they must correctly include the `audience` parameter. Failure to do so will result in tokens that cannot be used to access the API. This shifts some responsibility to the client implementation.
+3.  **Direct Auth0 Communication**: With direct client-to-Auth0 communication, the local server is no longer in the token exchange path, reducing the attack surface of the local proxy. However, clients must implement secure HTTPS communication with Auth0.
+4.  **Dynamic Client Registration (DCR) Security**: If the `/register` endpoint is open and not properly secured, it could potentially be a vector for attack (e.g., allowing malicious clients to register). In the current flow, it is used to hand out a pre-existing configuration, which is safer. For production, access to this endpoint should be restricted. 

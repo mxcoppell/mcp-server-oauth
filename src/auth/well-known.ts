@@ -44,7 +44,7 @@ export class WellKnownHandler {
         return {
             issuer: this.config.oauthIssuer,
             authorization_endpoint: `http://localhost:${this.config.httpPort}/authorize`,
-            token_endpoint: `http://localhost:${this.config.httpPort}/token`,
+            token_endpoint: `${this.config.oauthIssuer}/oauth/token`,
             registration_endpoint: `http://localhost:${this.config.httpPort}/register`,
             scopes_supported: [
                 "openid",

@@ -49,7 +49,7 @@ auth0 users roles assign "<user-id>" --roles <role-id>
 
 **Problem**: MCP Inspector couldn't fetch OAuth metadata directly from Auth0 due to CORS restrictions.
 
-**Solution**: Implement local OAuth metadata endpoints with CORS headers:
+**Solution**: Implement OAuth metadata discovery endpoints with CORS headers:
 - `/.well-known/oauth-protected-resource`
 - `/.well-known/oauth-authorization-server` 
 - `/register` (DCR endpoint)
@@ -71,12 +71,12 @@ auth0 users roles assign "<user-id>" --roles <role-id>
 - `token_dialect: "access_token_authz"` ensures proper token format
 - `skip_consent_for_verifiable_first_party_clients: false` forces consent screen for API scopes
 
-### 5. OAuth Flow Proxy Implementation
+### 5. OAuth Flow Implementation
 
-**Architecture**: Local server proxies OAuth requests to Auth0 while adding required parameters:
+**Architecture**: Server handles authorization flow with direct Auth0 token exchange:
 
 ```javascript
-// Authorization proxy - adds audience parameter
+// Authorization proxy - adds audience parameter and redirects to Auth0
 app.get('/authorize', (req, res) => {
   const authUrl = new URL('https://tenant.auth0.com/authorize');
   // Copy all query parameters
@@ -88,18 +88,9 @@ app.get('/authorize', (req, res) => {
   res.redirect(authUrl.toString());
 });
 
-// Token proxy - adds audience to token request
-app.post('/token', async (req, res) => {
-  const tokenData = new URLSearchParams(req.body);
-  tokenData.set('audience', 'https://api.example.com');
-  // Forward to Auth0
-  const response = await fetch('https://tenant.auth0.com/oauth/token', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-    body: tokenData
-  });
-  res.json(await response.json());
-});
+// Clients exchange tokens directly with Auth0
+// Clients must include audience parameter in their token requests to:
+// POST https://tenant.auth0.com/oauth/token
 ```
 
 ## Auth0 Configuration Checklist
@@ -138,7 +129,7 @@ app.post('/token', async (req, res) => {
 
 3. **Role Assignment**: Users must have roles with API permissions assigned, not just application access.
 
-4. **CORS Configuration**: Auth0 doesn't serve OAuth metadata with CORS headers, requiring local proxy.
+4. **CORS Configuration**: Auth0 doesn't serve OAuth metadata with CORS headers, requiring discovery endpoint proxy.
 
 5. **Consent Screen**: Disabling consent can prevent API scopes from being requested properly.
 

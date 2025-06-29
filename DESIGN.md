@@ -238,7 +238,7 @@ curl -s http://localhost:6060/.well-known/oauth-protected-resource | jq .
 curl -i -X POST http://localhost:6060/mcp
 
 # With invalid token  
-curl -i -X POST -H "Authorization: Bearer invalid-token" http://localhost:6060/mcp
+curl -i -X POST -H "Authorization: Bearer your-auth0-token" http://localhost:6060/mcp
 ```
 
 ### Test Valid Bearer Token
