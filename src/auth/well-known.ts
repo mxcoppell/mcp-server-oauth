@@ -51,8 +51,8 @@ export class WellKnownHandler {
             grant_types_supported: ["authorization_code", "refresh_token"],
             token_endpoint_auth_methods_supported: ["none"],
             code_challenge_methods_supported: ["S256"],
-            // OAuth provider-specific extensions
-            audience: this.config.oauthAudience,
+            // OAuth provider-specific extensions - use MCP resource URL for audience
+            audience: `http://localhost:${this.config.httpPort}/mcp`,
             require_request_uri_registration: false,
         };
     }
@@ -130,8 +130,8 @@ export class WellKnownHandler {
             response_types: ["code"],
             scope: `openid profile ${this.config.oauthApiScopes.join(' ')}`,
             token_endpoint_auth_method: "none",  // PKCE - no client secret
-            // OAuth provider-specific hints for MCP Inspector
-            audience: this.config.oauthAudience,
+            // OAuth provider-specific hints for MCP Inspector - use MCP resource URL
+            audience: `http://localhost:${this.config.httpPort}/mcp`,
             // Note: No client_secret returned - this is a public client using PKCE
         };
 
