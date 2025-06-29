@@ -33,7 +33,7 @@ graph TD;
 
     A -- "delegates login to" --> C;
     C -- "checks" --> E;
-    T -- "uses" --> E;
+    T -- "uses" --> D;
 
     style User fill:#2E86AB,stroke:#fff,stroke-width:2px,color:#fff
     style W1 fill:#602F01,stroke:#333,stroke-width:2px
