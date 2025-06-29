@@ -9,17 +9,12 @@ export class WellKnownHandler {
 
     getOAuthResourceMetadata(): WellKnownOAuthResource {
         return {
-            resource: this.config.oauthAudience,
-            resource_name: "Trading API",
+            resource: `http://localhost:${this.config.httpPort}/mcp`,
+            resource_name: this.config.oauthResourceName,
             authorization_servers: [
                 `http://localhost:${this.config.httpPort}`
             ],
-            scopes_supported: [
-                "marketdata",
-                "realtime",
-                "brokerage",
-                "orderexecution"
-            ],
+            scopes_supported: this.config.oauthApiScopes,
             bearer_methods_supported: ["header"]
         };
     }
@@ -49,10 +44,7 @@ export class WellKnownHandler {
             scopes_supported: [
                 "openid",
                 "profile",
-                "marketdata",
-                "realtime",
-                "brokerage",
-                "orderexecution"
+                ...this.config.oauthApiScopes
             ],
             response_types_supported: ["code"],
             response_modes_supported: ["query"],
@@ -131,12 +123,12 @@ export class WellKnownHandler {
 
         // Registration response optimized for PKCE public clients
         const registrationResponse = {
-            client_id: "E6nNx2Hlko4ZddCDAzdBqspgGWEP2Y2c",
+            client_id: this.config.oauthClientId,
             client_name: requestBody.client_name || "MCP Server OAuth",
             redirect_uris: redirectUris,
             grant_types: ["authorization_code", "refresh_token"],
             response_types: ["code"],
-            scope: "openid profile marketdata realtime brokerage orderexecution",
+            scope: `openid profile ${this.config.oauthApiScopes.join(' ')}`,
             token_endpoint_auth_method: "none",  // PKCE - no client secret
             // OAuth provider-specific hints for MCP Inspector
             audience: this.config.oauthAudience,

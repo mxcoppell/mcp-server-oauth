@@ -19,6 +19,9 @@ export interface ServerConfig {
     httpPort: number;
     oauthIssuer: string;
     oauthAudience: string;
+    oauthClientId: string;
+    oauthResourceName: string;
+    oauthApiScopes: string[];
     corsOrigin: string;
     enableAuth: boolean;
 }

@@ -34,16 +34,28 @@ npm run build
 
 ## ⚙️ Configuration
 
+### Setup Environment
+
+1. Copy the environment template:
+   ```bash
+   cp .env.sample .env
+   ```
+
+2. Update `.env` with your Auth0 configuration values (see template for guidance)
+
 ### Environment Variables
 
-| Variable         | Description                        | Default                          | Required      |
-| ---------------- | ---------------------------------- | -------------------------------- | ------------- |
-| `MCP_TRANSPORT`  | Transport type (`stdio` or `http`) | `stdio`                          | No            |
-| `MCP_HTTP_PORT`  | HTTP server port                   | `3000`                           | No            |
-| `OAUTH_ISSUER`   | Token issuer URL                   | `https://mxcoppell.us.auth0.com` | For HTTP auth |
-| `OAUTH_AUDIENCE` | Expected token audience            | `https://fancy-api.trading`      | For HTTP auth |
-| `CORS_ORIGIN`    | CORS origin                        | `*`                              | No            |
-| `ENABLE_AUTH`    | Enable OAuth authentication        | `true`                           | No            |
+| Variable              | Description                            | Default                         | Required      |
+| --------------------- | -------------------------------------- | ------------------------------- | ------------- |
+| `MCP_TRANSPORT`       | Transport type (`stdio` or `http`)     | `stdio`                         | No            |
+| `MCP_HTTP_PORT`       | HTTP server port                       | `6060`                          | No            |
+| `ENABLE_AUTH`         | Enable OAuth authentication            | `true`                          | No            |
+| `CORS_ORIGIN`         | CORS origin                            | `*`                             | No            |
+| `OAUTH_ISSUER`        | Auth0 tenant URL                       | `https://your-tenant.auth0.com` | For HTTP auth |
+| `OAUTH_AUDIENCE`      | API audience/identifier                | `https://your-api-identifier`   | For HTTP auth |
+| `OAUTH_CLIENT_ID`     | Auth0 application client ID            | `your-auth0-client-id`          | For HTTP auth |
+| `OAUTH_RESOURCE_NAME` | Resource name in OAuth metadata        | `Your API Name`                 | No            |
+| `OAUTH_API_SCOPES`    | Supported API scopes (comma-separated) | `scope1,scope2,scope3`          | No            |
 
 ## 🚀 Usage
 
@@ -69,8 +81,9 @@ npm run start:http
 # Development mode
 npm run dev:http
 
-# Via MCP Inspector
-npm run inspector:http
+# Via MCP Inspector (connect to running server)
+npx @modelcontextprotocol/inspector
+# Then connect to: http://localhost:6060/mcp
 ```
 
 ## 🔐 OAuth Authentication
@@ -82,29 +95,26 @@ The server exposes OAuth metadata at:
 GET /.well-known/oauth-protected-resource
 ```
 
-Response:
+Response (example with configured values):
 ```json
 {
-  "resource": "https://fancy-api.trading/",
-  "resource_name": "Trading API",
+  "resource": "https://your-api.example.com/",
+  "resource_name": "Your API Name",
   "authorization_servers": [
-    "https://mxcoppell.us.auth0.com/"
+    "https://your-tenant.auth0.com/"
   ],
   "scopes_supported": [
     "openid", 
     "profile", 
-    "ReadAccount", 
-    "Trade", 
-    "Trading", 
-    "MarketData", 
-    "News", 
-    "Matrix", 
-    "OptionSpreads", 
-    "offline_access", 
-    "HotLists"
+    "api:read", 
+    "api:write", 
+    "admin"
   ],
   "bearer_methods_supported": ["header"]
 }
+```
+
+> **Note**: The actual values are configured via environment variables. See `.env.sample` for configuration details.
 ```
 
 ### Token Validation
@@ -123,6 +133,42 @@ WWW-Authenticate: Bearer resource_metadata="http://localhost:6060/.well-known/oa
 ## 🛠️ Capabilities
 
 ### Tools
+
+#### `get-user-info`
+Get information about the current authenticated user (HTTP transport only).
+
+**Parameters:**
+- `includeDetails` (optional): Whether to include detailed user information (default: false)
+
+**Example:**
+```json
+{
+  "name": "get-user-info",
+  "arguments": {
+    "includeDetails": true
+  }
+}
+```
+
+#### `place-order`
+Place a trading order (requires authentication for HTTP transport).
+
+**Parameters:**
+- `symbol` (required): Stock symbol to trade
+- `side` (required): Order side ("buy" or "sell")
+- `quantity` (required): Number of shares
+
+**Example:**
+```json
+{
+  "name": "place-order",
+  "arguments": {
+    "symbol": "AAPL",
+    "side": "buy",
+    "quantity": 100
+  }
+}
+```
 
 #### `fetch_market_data`
 Retrieve financial market data for a given symbol.
@@ -149,45 +195,50 @@ Calculate portfolio performance metrics.
 - `account_id` (required): Account ID
 - `metric_type` (optional): Metric type ("return", "volatility", "sharpe_ratio", "all")
 
+**Example:**
+```json
+{
+  "name": "calculate_portfolio_metrics",
+  "arguments": {
+    "account_id": "ACC001",
+    "metric_type": "all"
+  }
+}
+```
+
 ### Resources
 
-#### Non-Streamable: `account://info/{account_id}`
-Get account information and portfolio summary.
+#### Authentication Token Information: `auth://token/info`
+Display current authentication token information and decoded claims.
 
-**Example URI:** `account://info/12345`
+**URI:** `auth://token/info`
 
-#### Streamable: `stream://market/{symbol}`
-Real-time market data stream using Server-Sent Events.
+#### Non-Streamable: `account://info/ACC001`
+Get account information and portfolio summary (fixed account ID).
 
-**Example URI:** `stream://market/AAPL`
+**URI:** `account://info/ACC001`
 
-#### Static: `static://trading/schedule`
-Trading hours and holiday schedule.
+#### Streamable: `stream://market/AAPL`
+Real-time market data stream for AAPL using Server-Sent Events.
+
+**URI:** `stream://market/AAPL`
 
 ### Prompts
 
 #### `trading_analysis`
-Generate comprehensive trading analysis.
+Generate comprehensive trading analysis and market insights.
 
-**Arguments:**
-- `symbol` (required): Stock symbol
-- `analysis_type` (optional): Analysis type
-- `time_period` (optional): Time period
+**Arguments:** None (provides general market analysis based on authentication status)
 
 #### `portfolio_optimization`
-Generate portfolio optimization recommendations.
+Optimize portfolio allocation and risk management.
 
-**Arguments:**
-- `account_id` (required): Account ID
-- `risk_tolerance` (optional): Risk level
-- `investment_horizon` (optional): Time horizon
+**Arguments:** None (provides general optimization guidance based on authentication status)
 
 #### `risk_assessment`
-Generate risk assessment for positions.
+Comprehensive risk analysis and mitigation strategies.
 
-**Arguments:**
-- `positions` (required): JSON string of positions
-- `market_conditions` (optional): Market conditions
+**Arguments:** None (provides general risk assessment based on authentication status)
 
 ## 🧪 Testing with MCP Inspector
 
@@ -202,8 +253,9 @@ npx @modelcontextprotocol/inspector --config config/mcp-stdio-config.json
 # Start the server first
 npm run start:http
 
-# Then connect inspector
-npx @modelcontextprotocol/inspector --config config/mcp-http-config.json --server http-dev
+# Then connect inspector to running server
+npx @modelcontextprotocol/inspector
+# Connect to: http://localhost:6060/mcp
 ```
 
 ## 🔧 Development
@@ -222,6 +274,8 @@ npm run lint:fix      # Fix linting issues
 
 ```
 mcp-server-oauth/
+├── .env.sample                   # Environment template
+├── .env                          # Your environment config (git ignored)
 ├── src/
 │   ├── server.ts                 # Main MCP server
 │   ├── index.ts                  # Entry point
@@ -241,8 +295,7 @@ mcp-server-oauth/
 │   └── types/
 │       └── index.ts              # Type definitions
 ├── config/
-│   ├── mcp-stdio-config.json     # Stdio config
-│   └── mcp-http-config.json      # HTTP config
+│   └── mcp-stdio-config.json     # Stdio config
 └── README.md
 ```
 

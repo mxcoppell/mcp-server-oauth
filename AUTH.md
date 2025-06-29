@@ -118,7 +118,7 @@ This endpoint is a mock implementation of the OAuth 2.0 Dynamic Client Registrat
 
 **Necessity and Function:**
 
-*   **Provides a Pre-configured `client_id`**: Instead of dynamically creating a new client, this endpoint's sole purpose is to return the **hardcoded Auth0 `client_id`** (`E6nNx2Hlko4ZddCDAzdBqspgGWEP2Y2c`). This satisfies clients that are built to use DCR, allowing them to retrieve the necessary `client_id` to proceed with the authorization flow.
+*   **Provides a Pre-configured `client_id`**: Instead of dynamically creating a new client, this endpoint's sole purpose is to return the **configured Auth0 `client_id`** (set via `OAUTH_CLIENT_ID` environment variable). This satisfies clients that are built to use DCR, allowing them to retrieve the necessary `client_id` to proceed with the authorization flow.
 *   **Validates Redirect URIs**: It checks the `redirect_uris` requested by the client against a server-side allowlist, providing a layer of security.
 
 ### The `/authorize` Endpoint
@@ -127,7 +127,7 @@ This endpoint handles the first leg of the OAuth 2.0 Authorization Code Flow, wh
 
 **Necessity and Function:**
 
-1.  **Injects the `audience` Parameter**: Its primary role is to inject the `audience` parameter (e.g., `https://fancy-api.trading`) into the authorization request. The `audience` is a crucial piece of information that tells Auth0 which specific API the client is trying to access. Standard clients may not send this, so the local endpoint adds it to ensure the flow succeeds and the resulting token is correctly scoped for the API.
+1.  **Injects the `audience` Parameter**: Its primary role is to inject the `audience` parameter (configured via `OAUTH_AUDIENCE` environment variable) into the authorization request. The `audience` is a crucial piece of information that tells Auth0 which specific API the client is trying to access. Standard clients may not send this, so the local endpoint adds it to ensure the flow succeeds and the resulting token is correctly scoped for the API.
 2.  **Enforces Scopes**: The endpoint programmatically ensures that all required scopes (like `openid`, `profile`, and API-specific scopes) are included in the request sent to Auth0. This centralizes security policy and guarantees the application receives the necessary permissions.
 3.  **Abstracts the Identity Provider**: It receives the request at a local URL (`http://localhost:6060/authorize`) and then redirects the user's browser to the actual Auth0 tenant URL. This hides the specifics of the identity provider from the client, simplifying client configuration.
 
@@ -137,7 +137,7 @@ The token exchange happens directly between the client and Auth0's `/oauth/token
 
 **Client Requirements:**
 
-1.  **Must Include `audience` Parameter**: Since there's no local proxy to inject the `audience` parameter, clients must include the `audience` parameter (`https://fancy-api.trading`) in their token exchange requests to Auth0. This is critical for Auth0 to issue tokens scoped to the correct API.
+1.  **Must Include `audience` Parameter**: Since there's no local proxy to inject the `audience` parameter, clients must include the `audience` parameter (matching your configured `OAUTH_AUDIENCE` value) in their token exchange requests to Auth0. This is critical for Auth0 to issue tokens scoped to the correct API.
 2.  **PKCE Support**: Clients must support PKCE (Proof Key for Code Exchange) since the flow uses public clients without client secrets.
 3.  **Direct HTTPS Communication**: Clients communicate directly with Auth0's secure endpoints, eliminating the need for a local token proxy.
 

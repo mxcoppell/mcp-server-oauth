@@ -53,8 +53,8 @@ In Terminal 1:
 export MCP_TRANSPORT=http
 export MCP_HTTP_PORT=6060
 export ENABLE_AUTH=true
-export OAUTH_ISSUER=https://mxcoppell.us.auth0.com
-export OAUTH_AUDIENCE=https://fancy-api.trading
+export OAUTH_ISSUER=https://your-tenant.auth0.com
+export OAUTH_AUDIENCE=https://your-api.example.com
 export CORS_ORIGIN=*
 
 # Start the server
@@ -80,13 +80,13 @@ Verify the server is running:
 curl -s http://localhost:6060/.well-known/oauth-protected-resource | jq .
 ```
 
-Expected response:
+Expected response (using your configured values):
 ```json
 {
-  "resource": "https://fancy-api.trading/",
-  "resource_name": "Trading API",
-  "authorization_servers": ["https://mxcoppell.us.auth0.com/"],
-  "scopes_supported": ["ReadAccount", "Trade", "MarketData"],
+  "resource": "https://your-api.example.com/",
+  "resource_name": "Your API Name",
+  "authorization_servers": ["http://localhost:6060"],
+  "scopes_supported": ["api:read", "api:write"],
   "bearer_methods_supported": ["header"]
 }
 ```
@@ -105,19 +105,6 @@ WWW-Authenticate: Bearer resource_metadata="http://localhost:6060/.well-known/oa
 ### Start MCP Inspector (HTTP)
 
 In Terminal 2:
-```bash
-npx @modelcontextprotocol/inspector --config config/mcp-http-config.json --server mcp-server-oauth-http
-```
-
-The inspector will:
-- Connect to the running HTTP server at http://localhost:6060/mcp
-- Open a web interface (usually at http://localhost:5173)
-- **Note**: Authentication is handled by the inspector's OAuth flow
-
-## Alternative HTTP Inspector Connection
-
-If you want to connect the inspector to an already running HTTP server:
-
 ```bash
 npx @modelcontextprotocol/inspector
 ```
@@ -164,10 +151,10 @@ curl -i http://localhost:6060/
 
 ### Configuration Files
 
-The config files used by the inspector are:
+The config file used by the inspector is:
 - `config/mcp-stdio-config.json` - For stdio transport
-- `config/mcp-http-config.json` - For HTTP transport
-- `config/mcp-inspector-config.json` - Alternative HTTP config with auth disabled
+
+For HTTP transport, connect directly to the running server at `http://localhost:6060/mcp`
 
 ## Manual Testing Workflow
 

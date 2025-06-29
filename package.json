@@ -17,7 +17,6 @@
         "lint": "eslint src/**/*.ts",
         "lint:fix": "eslint src/**/*.ts --fix",
         "inspector:stdio": "npx @modelcontextprotocol/inspector --config config/mcp-stdio-config.json",
-        "inspector:http": "npx @modelcontextprotocol/inspector --config config/mcp-http-config.json --server http-dev",
         "generate-token": "node scripts/generate-test-token.js"
     },
     "keywords": [

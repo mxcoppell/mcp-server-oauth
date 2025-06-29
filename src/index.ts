@@ -1,5 +1,6 @@
 #!/usr/bin/env node
 
+import 'dotenv/config';
 import { getServerConfig, validateConfig } from './config.js';
 import { StdioTransport } from './transports/stdio.js';
 import { HttpTransport } from './transports/http.js';

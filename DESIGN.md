@@ -72,30 +72,20 @@ This implementation satisfies the following original requirements:
 ### OAuth 2.1 Authorization Implementation
 
 #### Discovery Endpoint: `/.well-known/oauth-protected-resource`
-Returns the exact metadata format as specified:
+Returns metadata format using configured values:
 ```json
 {
-  "resource": "https://fancy-api.trading/",
-  "resource_name": "Trading API",
+  "resource": "[OAUTH_AUDIENCE]",
+  "resource_name": "[OAUTH_RESOURCE_NAME]",
   "authorization_servers": [
-    "https://mxcoppell.us.auth0.com/"
+    "http://localhost:[MCP_HTTP_PORT]"
   ],
-  "scopes_supported": [
-    "openid", 
-    "profile", 
-    "ReadAccount", 
-    "Trade", 
-    "Trading", 
-    "MarketData", 
-    "News", 
-    "Matrix", 
-    "OptionSpreads", 
-    "offline_access", 
-    "HotLists"
-  ],
+  "scopes_supported": "[OAUTH_API_SCOPES]",
   "bearer_methods_supported": ["header"]
 }
 ```
+
+> **Note**: Values in brackets are populated from environment variables
 
 #### Bearer Token Validation (HTTP Transport Only)
 1. **Token Extraction**: Extract Bearer token from Authorization header
@@ -158,11 +148,14 @@ Returns the exact metadata format as specified:
 - `MCP_TRANSPORT`: Transport type (`stdio` | `http`)
 - `MCP_HTTP_PORT`: HTTP server port (default: 6060)
 - `ENABLE_AUTH`: Enable OAuth authentication (default: true for HTTP, false for stdio)
-- `OAUTH_ISSUER`: Token issuer URL (`https://mxcoppell.us.auth0.com`)
-- `OAUTH_AUDIENCE`: Expected token audience (`https://fancy-api.trading`)
+- `OAUTH_ISSUER`: Token issuer URL (your Auth0 domain)
+- `OAUTH_AUDIENCE`: Expected token audience (your API identifier)
+- `OAUTH_CLIENT_ID`: OAuth client ID for registration endpoint
+- `OAUTH_RESOURCE_NAME`: Name of the API resource
+- `OAUTH_API_SCOPES`: Comma-separated list of API scopes
 - `CORS_ORIGIN`: CORS origin configuration (default: `*`)
 
-### Transport Configurations
+### Transport Configuration
 
 #### Stdio Configuration (`config/mcp-stdio-config.json`)
 ```json
@@ -180,24 +173,13 @@ Returns the exact metadata format as specified:
 }
 ```
 
-#### HTTP Configuration (`config/mcp-http-config.json`)
-```json
-{
-  "mcpServers": {
-    "mcp-server-oauth-http": {
-      "command": "node", 
-      "args": ["dist/index.js"],
-      "env": {
-        "MCP_TRANSPORT": "http",
-        "MCP_HTTP_PORT": "6060",
-        "ENABLE_AUTH": "true",
-
-        "OAUTH_ISSUER": "https://mxcoppell.us.auth0.com",
-        "OAUTH_AUDIENCE": "https://fancy-api.trading"
-      }
-    }
-  }
-}
+For HTTP transport, use environment variables directly (or create a `.env` file):
+```bash
+MCP_TRANSPORT=http MCP_HTTP_PORT=6060 ENABLE_AUTH=true \
+OAUTH_ISSUER=https://your-tenant.auth0.com \
+OAUTH_AUDIENCE=https://your-api.example.com \
+OAUTH_CLIENT_ID=your-client-id \
+npm start
 ```
 
 ## Usage Patterns
@@ -216,8 +198,9 @@ npx @modelcontextprotocol/inspector --config config/mcp-stdio-config.json
 # Direct execution with OAuth enabled
 MCP_TRANSPORT=http ENABLE_AUTH=true npm start
 
-# Via MCP Inspector
-npx @modelcontextprotocol/inspector --config config/mcp-http-config.json
+# Via MCP Inspector (connect to running server)
+npx @modelcontextprotocol/inspector
+# Then connect to: http://localhost:6060/mcp
 ```
 
 ## Testing OAuth Implementation
@@ -225,7 +208,7 @@ npx @modelcontextprotocol/inspector --config config/mcp-http-config.json
 ### Auth0 Token Integration
 The server expects JWT tokens from Auth0. Configure your Auth0 application to issue tokens with:
 - **Issuer**: Your Auth0 domain (e.g., `https://your-domain.auth0.com/`)
-- **Audience**: `https://fancy-api.trading`
+- **Audience**: Your configured `OAUTH_AUDIENCE` value
 
 ### Test Well-Known Endpoint
 ```bash
@@ -270,9 +253,10 @@ mcp-server-oauth/
 │   │   └── prompts.ts            # Prompt definitions
 │   └── types/
 │       └── index.ts              # TypeScript type definitions
+├── .env.sample                   # Environment template
+├── .env                          # Environment config (git ignored)
 ├── config/
-│   ├── mcp-stdio-config.json     # Stdio transport config (no auth)
-│   └── mcp-http-config.json      # HTTP transport config (OAuth enabled)
+│   └── mcp-stdio-config.json     # Stdio transport config (no auth)
 ├── scripts/                      # Utility scripts
 ├── package.json                  # Dependencies and scripts
 ├── tsconfig.json                 # TypeScript configuration

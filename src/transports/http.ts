@@ -210,7 +210,7 @@ export class HttpTransport {
             }
             params.append('audience', this.config.oauthAudience);
             const originalScope = params.get('scope') || '';
-            const apiScopes = ['marketdata', 'realtime', 'brokerage', 'orderexecution'];
+            const apiScopes = this.config.oauthApiScopes || [];
             const existingScopes = originalScope ? originalScope.split(' ') : [];
             const oidcScopes = ['openid', 'profile'];
             const allScopes = [...new Set([...oidcScopes, ...existingScopes, ...apiScopes])];

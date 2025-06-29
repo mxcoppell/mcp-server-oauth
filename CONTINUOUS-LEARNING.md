@@ -28,8 +28,8 @@ Successfully implemented an MCP OAuth server that:
 # Create role
 auth0 roles create --name "Trading User" --description "User with trading API access"
 
-# Add API permissions to role
-auth0 roles permissions add <role-id> --api-id <api-id> --permissions marketdata,realtime,brokerage,orderexecution
+# Add API permissions to role  
+auth0 roles permissions add <role-id> --api-id <api-id> --permissions read:data,write:data,execute:trades
 
 # Assign role to user
 auth0 users roles assign "<user-id>" --roles <role-id>
@@ -168,8 +168,8 @@ Always verify token contents contain:
 ✅ **Working OAuth Flow**:
 - DCR returns client configuration with all scopes
 - Authorization includes API audience parameter
-- Token response includes: `"scope": "openid profile marketdata realtime brokerage orderexecution"`
-- Token response includes: `"permissions": ["brokerage", "marketdata", "orderexecution", "realtime"]`
+- Token response includes: `"scope": "openid profile read:data write:data execute:trades"`
+- Token response includes: `"permissions": ["read:data", "write:data", "execute:trades"]`
 
 ✅ **MCP Inspector Integration**:
 - Successfully registers client via DCR
