@@ -261,7 +261,7 @@ function calculatePortfolioMetrics(accountId: string, metricType: string) {
     }
 
     // Return specific metric
-    const metricMap: Record<string, any> = {
+    const metricMap: Record<string, Record<string, number>> = {
         return: {
             total_return: mockMetrics.total_return,
             annualized_return: mockMetrics.annualized_return

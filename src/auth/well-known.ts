@@ -1,5 +1,15 @@
 import { WellKnownOAuthResource, OAuthAuthorizationServerMetadata, ServerConfig } from '../types/index.js';
 
+interface RegistrationRequestBody {
+    client_name?: string;
+    redirect_uris?: string[];
+    [key: string]: unknown;
+}
+
+function isRegistrationRequestBody(obj: unknown): obj is RegistrationRequestBody {
+    return typeof obj === 'object' && obj !== null;
+}
+
 export class WellKnownHandler {
     private config: ServerConfig;
 
@@ -73,12 +83,12 @@ export class WellKnownHandler {
         };
     }
 
-    handleRegistrationRequest(requestBody: any): { status: number; headers: Record<string, string>; body: string } {
+    handleRegistrationRequest(requestBody: unknown): { status: number; headers: Record<string, string>; body: string } {
         // Mock Dynamic Client Registration endpoint for PKCE public clients
         // Always returns the pre-configured Auth0 client ID
 
         // Validate request body
-        if (!requestBody || typeof requestBody !== 'object') {
+        if (!isRegistrationRequestBody(requestBody)) {
             return {
                 status: 400,
                 headers: {
@@ -94,6 +104,9 @@ export class WellKnownHandler {
             };
         }
 
+        // Now TypeScript knows requestBody is RegistrationRequestBody
+        const validatedBody = requestBody;
+
         // Use Auth0-compatible redirect URIs
         // MCP Inspector uses its own hardcoded callback URL regardless of what we return
         const auth0RedirectUris = [
@@ -106,9 +119,9 @@ export class WellKnownHandler {
         // If client provided redirect URIs, check if any match our allowed list
         let redirectUris = auth0RedirectUris;
 
-        if (Array.isArray(requestBody.redirect_uris) && requestBody.redirect_uris.length > 0) {
+        if (Array.isArray(validatedBody.redirect_uris) && validatedBody.redirect_uris.length > 0) {
             // Find intersection between requested URIs and our allowed URIs
-            const requestedUris = requestBody.redirect_uris;
+            const requestedUris = validatedBody.redirect_uris;
             const matchingUris = requestedUris.filter((uri: string) =>
                 auth0RedirectUris.includes(uri)
             );
@@ -124,7 +137,7 @@ export class WellKnownHandler {
         // Registration response optimized for PKCE public clients
         const registrationResponse = {
             client_id: this.config.oauthClientId,
-            client_name: requestBody.client_name || "MCP Server OAuth",
+            client_name: validatedBody.client_name || "MCP Server OAuth",
             redirect_uris: redirectUris,
             grant_types: ["authorization_code", "refresh_token"],
             response_types: ["code"],
