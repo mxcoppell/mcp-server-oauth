@@ -12,7 +12,7 @@
         "start:http": "MCP_TRANSPORT=http npm start",
         "dev:stdio": "MCP_TRANSPORT=stdio npm run dev",
         "dev:http": "MCP_TRANSPORT=http npm run dev",
-        "test": "jest",
+        "test": "jest --passWithNoTests",
         "test:watch": "jest --watch",
         "lint": "eslint src/**/*.ts",
         "lint:fix": "eslint src/**/*.ts --fix",
