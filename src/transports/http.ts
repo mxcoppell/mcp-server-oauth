@@ -2,7 +2,7 @@ import express from 'express';
 import cors from 'cors';
 import { Server } from 'http';
 import { OAuthMcpServer } from '../server.js';
-import { ServerConfig } from '../types/index.js';
+import { ServerConfig, AuthorizationContext } from '../types/index.js';
 import { TokenValidator } from '../auth/validator.js';
 import { WellKnownHandler } from '../auth/well-known.js';
 import {
@@ -10,6 +10,10 @@ import {
 } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+
+interface AuthenticatedRequest extends express.Request {
+    auth?: AuthorizationContext;
+}
 
 export class HttpTransport {
     private app: express.Application;
@@ -69,14 +73,14 @@ export class HttpTransport {
                     } else {
                         res.status(401).json({
                             jsonrpc: '2.0',
-                            id: (req.body as any)?.id || null,
+                            id: (req.body as { id?: unknown })?.id || null,
                             error: { code: -32001, message: 'Unauthorized' }
                         });
                     }
                     return;
                 }
                 // Attach auth context for the transport and capability handlers
-                (req as any).auth = authContext;
+                (req as AuthenticatedRequest).auth = authContext;
             }
             next();
         };
@@ -144,7 +148,7 @@ export class HttpTransport {
                         };
 
                         // Create a new server instance for this session with auth context
-                        const authContext = this.config.enableAuth ? (req as any).auth : null;
+                        const authContext = this.config.enableAuth ? (req as AuthenticatedRequest).auth : null;
                         const sessionServer = new OAuthMcpServer(this.config, authContext);
                         await sessionServer.getServer().connect(transport);
 
@@ -152,7 +156,7 @@ export class HttpTransport {
                     } else if (sessionId && isInitRequest) {
                         // Handle re-initialization of existing session with updated auth context
                         const transport = this.sessions.get(sessionId)!;
-                        const authContext = this.config.enableAuth ? (req as any).auth : null;
+                        const authContext = this.config.enableAuth ? (req as AuthenticatedRequest).auth : null;
 
                         // Create a new server instance with updated auth context
                         const sessionServer = new OAuthMcpServer(this.config, authContext);
@@ -236,7 +240,7 @@ export class HttpTransport {
             });
         });
 
-        this.app.use((error: any, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
+        this.app.use((error: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
             console.error('[HTTP] Unhandled error:', error);
             res.status(500).json({
                 error: 'Internal Server Error',

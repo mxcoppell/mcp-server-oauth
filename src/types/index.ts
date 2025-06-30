@@ -57,7 +57,7 @@ export interface Position {
 export interface StreamData {
     type: 'market_data' | 'account_update' | 'trade_execution';
     timestamp: number;
-    data: MarketData | AccountInfo | any;
+    data: MarketData | AccountInfo | Record<string, unknown>;
 }
 
 export interface WellKnownOAuthResource {
