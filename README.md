@@ -1,4 +1,4 @@
-# MCP OAuth Server
+# MCP Server with OAuth & Capabilities
 
 A comprehensive Model Context Protocol (MCP) server implementation demonstrating OAuth 2.1 authorization, dual transport support (stdio/HTTP), and all core MCP capabilities following the 2025-06-18 specification.
 
