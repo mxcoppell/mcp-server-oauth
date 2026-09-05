@@ -10,6 +10,7 @@ import {
 } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { randomUUID } from 'crypto';
 import { isInitializeRequest } from '@modelcontextprotocol/sdk/types.js';
+import type { Transport } from '@modelcontextprotocol/sdk/shared/transport.js';
 
 interface AuthenticatedRequest extends express.Request {
     auth?: AuthorizationContext;
@@ -150,7 +151,10 @@ export class HttpTransport {
                         // Create a new server instance for this session with auth context
                         const authContext = this.config.enableAuth ? (req as AuthenticatedRequest).auth : null;
                         const sessionServer = new OAuthMcpServer(this.config, authContext);
-                        await sessionServer.getServer().connect(transport);
+                        // Cast needed: StreamableHTTPServerTransport's onclose accessor is typed
+                        // as `(() => void) | undefined`, which the SDK's Transport interface
+                        // (onclose?: () => void) rejects under exactOptionalPropertyTypes.
+                        await sessionServer.getServer().connect(transport as Transport);
 
                         await transport.handleRequest(req, res, req.body);
                     } else if (sessionId && isInitRequest) {
@@ -160,7 +164,10 @@ export class HttpTransport {
 
                         // Create a new server instance with updated auth context
                         const sessionServer = new OAuthMcpServer(this.config, authContext);
-                        await sessionServer.getServer().connect(transport);
+                        // Cast needed: StreamableHTTPServerTransport's onclose accessor is typed
+                        // as `(() => void) | undefined`, which the SDK's Transport interface
+                        // (onclose?: () => void) rejects under exactOptionalPropertyTypes.
+                        await sessionServer.getServer().connect(transport as Transport);
 
                         await transport.handleRequest(req, res, req.body);
                     } else {
