@@ -14,14 +14,8 @@ export function registerTools(
         'get-user-info',
         'Get information about the current authenticated user',
         {
-            type: 'object',
-            properties: {
-                includeDetails: {
-                    type: 'boolean',
-                    description: 'Whether to include detailed user information',
-                    default: false
-                }
-            }
+            includeDetails: z.boolean().optional().default(false)
+                .describe('Whether to include detailed user information')
         },
         async (args) => {
             const { includeDetails } = args as { includeDetails?: boolean };
@@ -82,23 +76,9 @@ export function registerTools(
         'place-order',
         'Place a trading order (requires authentication)',
         {
-            type: 'object',
-            properties: {
-                symbol: {
-                    type: 'string',
-                    description: 'Stock symbol to trade'
-                },
-                side: {
-                    type: 'string',
-                    enum: ['buy', 'sell'],
-                    description: 'Order side'
-                },
-                quantity: {
-                    type: 'number',
-                    description: 'Number of shares'
-                }
-            },
-            required: ['symbol', 'side', 'quantity']
+            symbol: z.string().describe('Stock symbol to trade'),
+            side: z.enum(['buy', 'sell']).describe('Order side'),
+            quantity: z.number().describe('Number of shares')
         },
         async (args) => {
             const { symbol, side, quantity } = args as {
