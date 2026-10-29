@@ -163,7 +163,7 @@ export function registerTools(
                 };
             } catch (error) {
                 if (error instanceof z.ZodError) {
-                    throw new Error(`Invalid parameters: ${error.errors.map(e => e.message).join(', ')}`);
+                    throw new Error(`Invalid parameters: ${error.issues.map(e => e.message).join(', ')}`);
                 }
                 throw error;
             }
